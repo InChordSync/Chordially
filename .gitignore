@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -15,11 +16,14 @@
 
 # next.js
 /.next/
+**/.next
 /out/
 
 # production
 /build
 /dist
+**/build
+**/dist
 
 # misc
 .DS_Store
@@ -44,6 +48,7 @@ next-env.d.ts
 
 # expo
 .expo
+**/.expo
 
 # turbo
 .turbo
