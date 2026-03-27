@@ -47,3 +47,16 @@ next-env.d.ts
 
 # turbo
 .turbo
+
+# Test files
+test-*.js
+comprehensive-test.js
+
+# API build files
+apps/api/dist/
+apps/api/.tsbuildinfo
+
+# Web build files
+apps/web/.next/
+apps/web/out/
+apps/web/.tsbuildinfo

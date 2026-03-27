@@ -1,0 +1,14 @@
+{
+  "name": "@chordially/types",
+  "version": "0.1.0",
+  "description": "Shared TypeScript types for Chordially",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
