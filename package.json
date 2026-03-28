@@ -1,0 +1,20 @@
+{
+  "name": "chordially",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.6.5",
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "turbo run test",
+    "dev": "turbo run dev --parallel"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.23.0",
+    "eslint": "^9.23.0",
+    "globals": "^16.0.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.2"
+  }
+}
