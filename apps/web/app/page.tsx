@@ -1,39 +1,48 @@
-import { Shell } from "../components/layout/shell";
-import { Card } from "../components/ui/card";
+import { MarketingShell } from "../components/layout/marketing-shell";
 import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+
+const sections = [
+  {
+    title: "For artists",
+    copy: "Start from a clear artist story, share a profile, and give supporters a simple path to follow your next live set."
+  },
+  {
+    title: "For fans",
+    copy: "Browse a product narrative that explains the value quickly, then move straight into profile setup without backend dependencies."
+  },
+  {
+    title: "For judges",
+    copy: "See the core product promise, user segments, and a concrete next step in one lightweight page."
+  }
+];
 
 export default function HomePage() {
   return (
-    <Shell
-      title="Shared web foundation for public, artist, and admin surfaces."
-      subtitle="This branch adds reusable layout, form, and navigation primitives together with route-level role guards."
+    <MarketingShell
+      title="A landing page that tells the product story in one screen."
+      subtitle="This branch adds the public marketing entry point and a standalone profile setup flow that can ship before API-backed user management."
     >
-      <div className="nav">
-        <Button href="/login">Open demo login</Button>
-        <Button href="/dashboard" variant="secondary">
-          Dashboard
-        </Button>
-        <Button href="/admin" variant="secondary">
-          Admin
-        </Button>
+      <div className="meta">
+        <span className="meta-chip">Live tipping</span>
+        <span className="meta-chip">Artist discovery</span>
+        <span className="meta-chip">Admin-ready foundation</span>
+      </div>
+      <div className="stack" style={{ marginBottom: 18 }}>
+        <div className="meta">
+          <Button href="/profile">Open profile setup</Button>
+          <Button href="/profile" variant="secondary">
+            Edit demo account
+          </Button>
+        </div>
       </div>
       <div className="grid grid--3">
-        <Card title="Public">
-          <p className="muted">
-            Shared shell and cards for landing and discovery experiences.
-          </p>
-        </Card>
-        <Card title="Artist">
-          <p className="muted">
-            Protected dashboard route for artist and admin roles.
-          </p>
-        </Card>
-        <Card title="Admin">
-          <p className="muted">
-            Isolated admin route that rejects fan and artist-only sessions.
-          </p>
-        </Card>
+        {sections.map((section) => (
+          <Card key={section.title} title={section.title}>
+            <p className="muted">{section.copy}</p>
+          </Card>
+        ))}
       </div>
-    </Shell>
+    </MarketingShell>
   );
 }

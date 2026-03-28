@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 
-type ButtonProps = {
-  children: ReactNode;
+export function Button({
+  href,
+  children,
+  variant = "primary"
+}: {
   href?: string;
+  children: ReactNode;
   variant?: "primary" | "secondary";
-};
-
-export function Button({ children, href, variant = "primary" }: ButtonProps) {
+}) {
   const className = `button button--${variant}`;
 
   if (href) {

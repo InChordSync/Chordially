@@ -9,7 +9,7 @@ export function Card({
 }) {
   return (
     <section className="card">
-      <p className="card__eyebrow">{title}</p>
+      <p className="card-label">{title}</p>
       <div>{children}</div>
     </section>
   );

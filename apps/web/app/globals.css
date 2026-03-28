@@ -1,13 +1,11 @@
 :root {
-  --bg: #f7f2e8;
-  --ink: #1f1b16;
-  --muted: #695d51;
-  --line: #d8cabc;
-  --panel: rgba(255, 251, 245, 0.88);
-  --accent: #cb5d2e;
-  --accent-dark: #9b3f18;
-  --accent-soft: #f6d8bf;
-  --success: #21684c;
+  --bg: #07131f;
+  --ink: #eef5ff;
+  --muted: #a5bad3;
+  --line: rgba(148, 163, 184, 0.25);
+  --panel: rgba(6, 16, 29, 0.84);
+  --accent: #f08d49;
+  --accent-soft: rgba(240, 141, 73, 0.18);
 }
 
 * {
@@ -16,14 +14,14 @@
 
 html {
   background:
-    radial-gradient(circle at top right, rgba(203, 93, 46, 0.16), transparent 30%),
-    linear-gradient(180deg, #f8f4ec 0%, #f1e7d9 100%);
+    radial-gradient(circle at top left, rgba(240, 141, 73, 0.18), transparent 30%),
+    linear-gradient(180deg, #07131f 0%, #040b12 100%);
 }
 
 body {
   margin: 0;
   color: var(--ink);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
 }
 
 a {
@@ -31,49 +29,45 @@ a {
   text-decoration: none;
 }
 
-.shell {
+.page-shell {
   width: min(1100px, calc(100% - 32px));
   margin: 0 auto;
   padding: 40px 0 72px;
 }
 
-.hero,
+.hero-panel,
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 28px;
   padding: 28px;
-  box-shadow: 0 16px 48px rgba(74, 53, 32, 0.08);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
 }
 
-.hero {
+.hero-panel {
   margin-bottom: 18px;
 }
 
 .eyebrow,
-.card__eyebrow {
-  margin: 0 0 12px;
-  color: var(--accent-dark);
+.card-label {
+  margin: 0 0 14px;
+  color: var(--accent);
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font: 600 0.78rem/1.2 "Trebuchet MS", sans-serif;
-}
-
-h1, h2, h3, p {
-  margin-top: 0;
+  letter-spacing: 0.16em;
+  font: 700 0.76rem/1.2 "Trebuchet MS", sans-serif;
 }
 
 h1 {
-  font-size: clamp(2.4rem, 5vw, 4.6rem);
-  line-height: 0.95;
+  margin: 0 0 18px;
   max-width: 12ch;
-  margin-bottom: 16px;
+  font-size: clamp(2.6rem, 5vw, 5rem);
+  line-height: 0.95;
 }
 
-.hero__copy,
+.hero-copy,
 .muted {
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 .grid {
@@ -98,57 +92,50 @@ h1 {
   padding: 0 18px;
   border-radius: 999px;
   border: 1px solid transparent;
-  font: 600 0.95rem/1 "Trebuchet MS", sans-serif;
+  font-weight: 700;
 }
 
 .button--primary {
-  color: white;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  background: linear-gradient(135deg, #f08d49 0%, #c55b29 100%);
+  color: #fff8f2;
 }
 
 .button--secondary {
+  background: var(--accent-soft);
   border-color: var(--line);
-  background: white;
 }
 
-.input {
+.input,
+.textarea {
   width: 100%;
-  min-height: 46px;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid var(--line);
-  padding: 0 14px;
-  background: white;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  padding: 14px 16px;
   font: inherit;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-dark);
-  font: 600 0.8rem/1 "Trebuchet MS", sans-serif;
+.textarea {
+  min-height: 120px;
+  resize: vertical;
 }
 
-.nav {
+.meta {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 18px;
 }
 
-.list {
-  margin: 0;
-  padding-left: 18px;
-  color: var(--muted);
-}
-
-.auth-switcher {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--ink);
 }
 
 @media (max-width: 820px) {
