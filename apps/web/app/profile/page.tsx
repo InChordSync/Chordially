@@ -19,32 +19,32 @@ export default function ProfilePage({
       <div className="grid" style={{ gridTemplateColumns: "1.1fr 0.9fr" }}>
         <Card title="Edit profile">
           <form action={saveProfile} className="stack">
-            <label className="stack">
-              <span>Display name</span>
-              <Input defaultValue={profile.displayName} name="displayName" required />
-            </label>
-            <label className="stack">
-              <span>Username</span>
-              <Input defaultValue={profile.username} name="username" required />
-            </label>
-            <label className="stack">
-              <span>City</span>
-              <Input defaultValue={profile.city} name="city" required />
-            </label>
-            <label className="stack">
-              <span>Bio</span>
-              <textarea className="textarea" defaultValue={profile.bio} name="bio" required />
-            </label>
+            <div className="stack">
+              <label htmlFor="displayName">Display name</label>
+              <Input id="displayName" defaultValue={profile.displayName} name="displayName" required />
+            </div>
+            <div className="stack">
+              <label htmlFor="username">Username</label>
+              <Input id="username" defaultValue={profile.username} name="username" required />
+            </div>
+            <div className="stack">
+              <label htmlFor="city">City</label>
+              <Input id="city" defaultValue={profile.city} name="city" required />
+            </div>
+            <div className="stack">
+              <label htmlFor="bio">Bio</label>
+              <textarea id="bio" className="textarea" defaultValue={profile.bio} name="bio" required />
+            </div>
             <button className="button button--primary" type="submit">
               Save profile
             </button>
             {searchParams.saved === "1" ? (
-              <p className="muted">Profile saved locally for this browser session.</p>
+              <p className="muted" role="status">Profile saved locally for this browser session.</p>
             ) : null}
           </form>
         </Card>
         <Card title="Preview">
-          <div className="stack">
+          <div className="stack" aria-label="Profile preview">
             <p>
               <strong>{profile.displayName}</strong>
             </p>

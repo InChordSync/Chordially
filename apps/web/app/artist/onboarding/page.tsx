@@ -14,30 +14,30 @@ export default function ArtistOnboardingPage() {
     >
       <Card title="Artist details">
         <form action={saveArtist} className="stack">
-          <label className="stack">
-            <span>Stage name</span>
-            <Input defaultValue={artist.stageName} name="stageName" required />
-          </label>
-          <label className="stack">
-            <span>Profile slug</span>
-            <Input defaultValue={artist.slug} name="slug" required />
-          </label>
-          <label className="stack">
-            <span>City</span>
-            <Input defaultValue={artist.city} name="city" required />
-          </label>
-          <label className="stack">
-            <span>Genres</span>
-            <Input defaultValue={artist.genres} name="genres" required />
-          </label>
-          <label className="stack">
-            <span>Wallet</span>
-            <Input defaultValue={artist.wallet} name="wallet" required />
-          </label>
-          <label className="stack">
-            <span>Bio</span>
-            <textarea className="textarea" defaultValue={artist.bio} name="bio" required />
-          </label>
+          <div className="stack">
+            <label htmlFor="stageName">Stage name</label>
+            <Input id="stageName" defaultValue={artist.stageName} name="stageName" required />
+          </div>
+          <div className="stack">
+            <label htmlFor="slug">Profile slug</label>
+            <Input id="slug" defaultValue={artist.slug} name="slug" required />
+          </div>
+          <div className="stack">
+            <label htmlFor="city">City</label>
+            <Input id="city" defaultValue={artist.city} name="city" required />
+          </div>
+          <div className="stack">
+            <label htmlFor="genres">Genres</label>
+            <Input id="genres" defaultValue={artist.genres} name="genres" required />
+          </div>
+          <div className="stack">
+            <label htmlFor="wallet">Wallet</label>
+            <Input id="wallet" defaultValue={artist.wallet} name="wallet" required />
+          </div>
+          <div className="stack">
+            <label htmlFor="bio">Bio</label>
+            <textarea id="bio" className="textarea" defaultValue={artist.bio} name="bio" required />
+          </div>
           <button className="button" type="submit">
             Save artist profile
           </button>

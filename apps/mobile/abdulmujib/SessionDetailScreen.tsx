@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useNetworkState } from "./useNetworkState";
 
 type TipStatus = "idle" | "pending" | "success" | "failed";
 
@@ -19,7 +20,6 @@ interface SessionInfo {
   isLive: boolean;
 }
 
-// Placeholder session data — replace with route params / API call
 const SESSION: SessionInfo = {
   id: "1",
   artistName: "Amara Waves",
@@ -28,21 +28,27 @@ const SESSION: SessionInfo = {
   isLive: true,
 };
 
-// Placeholder tip submit — wire to real payment service when ready
 async function submitTip(_sessionId: string, _amount: string): Promise<void> {
   await new Promise((res) => setTimeout(res, 1200));
-  // Throw new Error("payment failed") to test failure path
 }
 
 export default function SessionDetailScreen() {
   const [amount, setAmount] = useState("");
   const [tipStatus, setTipStatus] = useState<TipStatus>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const isOnline = useNetworkState();
 
   const handleTip = async () => {
     const parsed = parseFloat(amount);
     if (!parsed || parsed <= 0) {
       Alert.alert("Invalid amount", "Please enter a positive tip amount.");
+      return;
+    }
+    if (!isOnline) {
+      Alert.alert(
+        "You're offline",
+        "Your tip intent has been saved. It will be ready to submit when you reconnect."
+      );
       return;
     }
 
@@ -55,7 +61,7 @@ export default function SessionDetailScreen() {
       setAmount("");
     } catch {
       setTipStatus("failed");
-      setErrorMsg("Payment failed. Please try again.");
+      setErrorMsg("Payment failed. Tap Retry to try again.");
     }
   };
 
@@ -66,7 +72,12 @@ export default function SessionDetailScreen() {
 
   return (
     <View style={s.root}>
-      {/* Session info */}
+      {!isOnline && (
+        <View style={s.offlineBanner} accessibilityRole="status" accessibilityLiveRegion="polite">
+          <Text style={s.offlineText}>You're offline — tip submission is paused.</Text>
+        </View>
+      )}
+
       <View style={s.card}>
         <View style={s.row}>
           <Text style={s.artist}>{SESSION.artistName}</Text>
@@ -80,7 +91,6 @@ export default function SessionDetailScreen() {
         <Text style={s.genre}>{SESSION.genre}</Text>
       </View>
 
-      {/* Tip flow */}
       <View style={s.tipBox}>
         <Text style={s.tipHeading}>Send a Tip (XLM)</Text>
 
@@ -98,23 +108,31 @@ export default function SessionDetailScreen() {
               value={amount}
               onChangeText={setAmount}
               editable={tipStatus !== "pending"}
+              accessibilityLabel="Tip amount"
             />
 
             {tipStatus === "failed" && (
-              <Text style={s.errorText}>{errorMsg}</Text>
+              <Text style={s.errorText} accessibilityRole="alert">{errorMsg}</Text>
             )}
 
             <TouchableOpacity
-              style={[s.btn, tipStatus === "pending" && s.btnDisabled]}
+              style={[s.btn, (tipStatus === "pending" || !isOnline) && s.btnDisabled]}
               onPress={tipStatus === "failed" ? handleRetry : handleTip}
               disabled={tipStatus === "pending"}
               accessibilityRole="button"
+              accessibilityLabel={
+                !isOnline
+                  ? "Offline — save tip intent"
+                  : tipStatus === "failed"
+                  ? "Retry tip"
+                  : "Send tip"
+              }
             >
               {tipStatus === "pending" ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={s.btnText}>
-                  {tipStatus === "failed" ? "Retry" : "Send Tip"}
+                  {!isOnline ? "Save for later" : tipStatus === "failed" ? "Retry" : "Send Tip"}
                 </Text>
               )}
             </TouchableOpacity>
@@ -127,6 +145,8 @@ export default function SessionDetailScreen() {
 
 const s = StyleSheet.create({
   root:          { flex: 1, backgroundColor: "#0b0b0f", paddingTop: 56, paddingHorizontal: 16 },
+  offlineBanner: { backgroundColor: "#7c3aed", borderRadius: 8, padding: 10, marginBottom: 16 },
+  offlineText:   { color: "#fff", fontSize: 13, fontWeight: "600", textAlign: "center" },
   card:          { backgroundColor: "#1c1c26", borderRadius: 12, padding: 16, marginBottom: 24 },
   row:           { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   artist:        { color: "#f4f0ff", fontSize: 18, fontWeight: "700" },

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -22,7 +21,6 @@ interface Session {
 
 const FILTERS: SessionStatus[] = ["live", "upcoming"];
 
-// Placeholder fetch — replace with real API call when backend is ready
 async function fetchSessions(filter: SessionStatus): Promise<Session[]> {
   return [
     {
@@ -42,6 +40,15 @@ async function fetchSessions(filter: SessionStatus): Promise<Session[]> {
       startTime: new Date(Date.now() + 3600_000).toISOString(),
     },
   ].filter((s) => s.status === filter);
+}
+
+function SkeletonCard() {
+  return (
+    <View style={s.skeletonCard} accessibilityElementsHidden>
+      <View style={s.skeletonLine} />
+      <View style={[s.skeletonLine, { width: "60%", marginTop: 8 }]} />
+    </View>
+  );
 }
 
 export default function DiscoveryScreen() {
@@ -68,10 +75,9 @@ export default function DiscoveryScreen() {
 
   return (
     <View style={s.root}>
-      <Text style={s.heading}>Discover Sessions</Text>
+      <Text style={s.heading} accessibilityRole="header">Discover Sessions</Text>
 
-      {/* Filter tabs */}
-      <View style={s.filters}>
+      <View style={s.filters} accessibilityRole="tablist">
         {FILTERS.map((f) => (
           <TouchableOpacity
             key={f}
@@ -79,6 +85,7 @@ export default function DiscoveryScreen() {
             onPress={() => setFilter(f)}
             accessibilityRole="tab"
             accessibilityState={{ selected: filter === f }}
+            accessibilityLabel={`${f.charAt(0).toUpperCase() + f.slice(1)} sessions`}
           >
             <Text style={[s.filterText, filter === f && s.filterTextActive]}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -88,7 +95,9 @@ export default function DiscoveryScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#a78bfa" style={{ marginTop: 40 }} />
+        <View accessibilityLabel="Loading sessions" accessibilityLiveRegion="polite">
+          {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+        </View>
       ) : (
         <FlatList
           data={sessions}
@@ -97,10 +106,14 @@ export default function DiscoveryScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#a78bfa" />
           }
           ListEmptyComponent={
-            <Text style={s.empty}>No {filter} sessions right now.</Text>
+            <View style={s.emptyBox}>
+              <Text style={s.emptyIcon}>🎵</Text>
+              <Text style={s.empty}>No {filter} sessions right now.</Text>
+              <Text style={s.emptyHint}>Pull down to refresh.</Text>
+            </View>
           }
           renderItem={({ item }) => (
-            <View style={s.card}>
+            <View style={s.card} accessibilityRole="article">
               <View style={s.cardHeader}>
                 <Text style={s.artist}>{item.artistName}</Text>
                 <View style={[s.badge, item.status === "live" && s.badgeLive]}>
@@ -133,5 +146,10 @@ const s = StyleSheet.create({
   badgeText:       { color: "#fff", fontSize: 11, fontWeight: "700" },
   title:           { color: "#c7c1d9", fontSize: 14, marginBottom: 2 },
   genre:           { color: "#6b7280", fontSize: 12 },
-  empty:           { color: "#6b7280", textAlign: "center", marginTop: 40, fontSize: 15 },
+  emptyBox:        { alignItems: "center", marginTop: 60 },
+  emptyIcon:       { fontSize: 36, marginBottom: 12 },
+  empty:           { color: "#c7c1d9", fontSize: 16, fontWeight: "600", marginBottom: 4 },
+  emptyHint:       { color: "#6b7280", fontSize: 13 },
+  skeletonCard:    { backgroundColor: "#1c1c26", borderRadius: 12, padding: 16, marginBottom: 12 },
+  skeletonLine:    { height: 14, borderRadius: 7, backgroundColor: "#2e2b3a", width: "80%" },
 });

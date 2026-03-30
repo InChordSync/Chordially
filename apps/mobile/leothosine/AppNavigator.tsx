@@ -1,6 +1,10 @@
 // #106 – React Native app architecture with navigation and state boundaries
 import { createContext, useContext, useState, ReactNode } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from "react-native";
+import DiscoveryScreen from "../abdulmujib/DiscoveryScreen";
+import NotificationsScreen from "../bellabuks/NotificationsScreen";
+import ArtistDashboardScreen from "./ArtistDashboardScreen";
+import LegalScreen from "./LegalScreen";
 
 // ── Auth state boundary ────────────────────────────────────────────────────
 
@@ -15,10 +19,16 @@ export const useAppAuth = () => useContext(AuthContext);
 
 // ── Route definitions ──────────────────────────────────────────────────────
 
-type Screen = "Home" | "Discover" | "Legal" | "Login" | "ArtistDashboard";
+type Screen = "Discover" | "Notifications" | "Legal" | "ArtistDashboard";
 
-const PUBLIC_SCREENS: Screen[] = ["Home", "Discover", "Legal", "Login"];
-const PROTECTED_SCREENS: Screen[] = ["ArtistDashboard"];
+const TAB_SCREENS: Screen[] = ["Discover", "Notifications", "Legal"];
+
+const TAB_LABELS: Record<Screen, string> = {
+  Discover: "Discover",
+  Notifications: "Alerts",
+  Legal: "Legal",
+  ArtistDashboard: "Dashboard",
+};
 
 // ── Navigator ─────────────────────────────────────────────────────────────
 
@@ -27,49 +37,57 @@ interface AppNavigatorProps {
   children?: ReactNode;
 }
 
-export function AppNavigator({ authState }: AppNavigatorProps) {
-  const [current, setCurrent] = useState<Screen>("Home");
-
-  function navigate(screen: Screen) {
-    if (PROTECTED_SCREENS.includes(screen) && !authState.isAuthenticated) {
-      setCurrent("Login");
-      return;
-    }
-    setCurrent(screen);
+function renderScreen(screen: Screen) {
+  switch (screen) {
+    case "Discover":       return <DiscoveryScreen />;
+    case "Notifications":  return <NotificationsScreen />;
+    case "Legal":          return <LegalScreen />;
+    case "ArtistDashboard": return <ArtistDashboardScreen />;
   }
+}
+
+export function AppNavigator({ authState }: AppNavigatorProps) {
+  const [current, setCurrent] = useState<Screen>("Discover");
+
+  const tabs: Screen[] = authState.isAuthenticated && authState.role === "artist"
+    ? [...TAB_SCREENS, "ArtistDashboard"]
+    : TAB_SCREENS;
 
   return (
     <AuthContext.Provider value={authState}>
-      <View style={styles.container}>
-        {/* Tab bar */}
-        <View style={styles.tabBar}>
-          {(PUBLIC_SCREENS as Screen[]).map((s) => (
-            <TouchableOpacity key={s} onPress={() => navigate(s)} style={styles.tab}>
-              <Text style={[styles.tabText, current === s && styles.tabActive]}>{s}</Text>
-            </TouchableOpacity>
-          ))}
-          {authState.isAuthenticated && authState.role === "artist" && (
-            <TouchableOpacity onPress={() => navigate("ArtistDashboard")} style={styles.tab}>
-              <Text style={[styles.tabText, current === "ArtistDashboard" && styles.tabActive]}>Dashboard</Text>
-            </TouchableOpacity>
-          )}
+      <SafeAreaView style={styles.container}>
+        {/* Screen content */}
+        <View style={styles.content}>
+          {renderScreen(current)}
         </View>
 
-        {/* Active screen label (screens rendered by caller) */}
-        <View style={styles.screenLabel}>
-          <Text style={styles.screenLabelText}>{current}</Text>
+        {/* Tab bar */}
+        <View style={styles.tabBar} accessibilityRole="tablist">
+          {tabs.map((s) => (
+            <TouchableOpacity
+              key={s}
+              onPress={() => setCurrent(s)}
+              style={styles.tab}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: current === s }}
+              accessibilityLabel={TAB_LABELS[s]}
+            >
+              <Text style={[styles.tabText, current === s && styles.tabActive]}>
+                {TAB_LABELS[s]}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      </View>
+      </SafeAreaView>
     </AuthContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0b0b0f" },
-  tabBar: { flexDirection: "row", backgroundColor: "#16131f", paddingVertical: 10, paddingHorizontal: 8 },
-  tab: { flex: 1, alignItems: "center" },
-  tabText: { color: "#8a84a0", fontSize: 12 },
+  content:   { flex: 1 },
+  tabBar:    { flexDirection: "row", backgroundColor: "#16131f", paddingVertical: 10, paddingHorizontal: 8, borderTopWidth: 1, borderTopColor: "#2e2b3a" },
+  tab:       { flex: 1, alignItems: "center" },
+  tabText:   { color: "#8a84a0", fontSize: 12 },
   tabActive: { color: "#7c5cfc", fontWeight: "700" },
-  screenLabel: { flex: 1, alignItems: "center", justifyContent: "center" },
-  screenLabelText: { color: "#f4f0ff", fontSize: 18, fontWeight: "600" }
 });

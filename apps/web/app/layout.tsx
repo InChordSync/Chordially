@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import { OfflineBanner } from "../components/ui/offline-banner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Chordially Admin",
-  description: "Admin login and overview shell."
-  
+  title: "Chordially",
+  description: "Support artists in real time."
 };
 
 export default function RootLayout({
@@ -12,7 +12,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <OfflineBanner />
+        {children}
+      </body>
     </html>
   );
 }

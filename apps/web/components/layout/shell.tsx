@@ -10,13 +10,16 @@ export function Shell({
   children: ReactNode;
 }) {
   return (
-    <main className="shell">
-      <header className="hero">
-        <p className="eyebrow">Chordially</p>
-        <h1>{title}</h1>
-        <p className="hero__copy">{subtitle}</p>
-      </header>
-      {children}
-    </main>
+    <>
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <main className="shell" id="main-content">
+        <header className="hero">
+          <p className="eyebrow" aria-hidden="true">Chordially</p>
+          <h1>{title}</h1>
+          <p className="hero__copy">{subtitle}</p>
+        </header>
+        {children}
+      </main>
+    </>
   );
 }

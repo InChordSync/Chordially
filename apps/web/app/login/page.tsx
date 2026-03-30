@@ -10,14 +10,14 @@ export default function LoginPage() {
     >
       <Card title="Role switcher">
         <form action={loginAsRole} className="stack">
-          <div className="auth-switcher">
-            <button className="button button--primary" name="role" value="fan">
+          <div className="auth-switcher" role="group" aria-label="Select a role to continue">
+            <button className="button button--primary" name="role" value="fan" type="submit">
               Continue as fan
             </button>
-            <button className="button button--secondary" name="role" value="artist">
+            <button className="button button--secondary" name="role" value="artist" type="submit">
               Continue as artist
             </button>
-            <button className="button button--secondary" name="role" value="admin">
+            <button className="button button--secondary" name="role" value="admin" type="submit">
               Continue as admin
             </button>
           </div>

@@ -5,7 +5,8 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StyleSheet
+  StyleSheet,
+  AccessibilityInfo
 } from "react-native";
 
 type NotifType = "tip" | "session" | "system";
@@ -38,6 +39,7 @@ export default function NotificationsScreen() {
 
   function markAllRead() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    AccessibilityInfo.announceForAccessibility("All notifications marked as read.");
   }
 
   function markRead(id: string) {
@@ -69,17 +71,25 @@ export default function NotificationsScreen() {
           <TouchableOpacity
             style={[styles.item, !item.read && styles.itemUnread]}
             onPress={() => markRead(item.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.title}. ${item.body}. ${item.time}.${!item.read ? " Unread." : ""}`}
+            accessibilityState={{ checked: item.read }}
           >
-            <Text style={styles.icon}>{typeIcon[item.type]}</Text>
+            <Text style={styles.icon} accessibilityElementsHidden>{typeIcon[item.type]}</Text>
             <View style={styles.itemBody}>
               <Text style={styles.itemTitle}>{item.title}</Text>
               <Text style={styles.itemText}>{item.body}</Text>
               <Text style={styles.itemTime}>{item.time}</Text>
             </View>
-            {!item.read && <View style={styles.unreadDot} />}
+            {!item.read && <View style={styles.unreadDot} accessibilityElementsHidden />}
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<Text style={styles.empty}>No notifications yet.</Text>}
+        ListEmptyComponent={
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyIcon}>🔔</Text>
+            <Text style={styles.empty}>No notifications yet.</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -100,5 +110,7 @@ const styles = StyleSheet.create({
   itemText: { color: "#c7c1d9", fontSize: 13, lineHeight: 19 },
   itemTime: { color: "#5a5470", fontSize: 11, marginTop: 4 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#7c5cfc", marginTop: 6 },
-  empty: { color: "#5a5470", textAlign: "center", marginTop: 40 }
+  emptyBox: { alignItems: "center", marginTop: 60 },
+  emptyIcon: { fontSize: 36, marginBottom: 12 },
+  empty: { color: "#c7c1d9", fontSize: 16, fontWeight: "600" }
 });

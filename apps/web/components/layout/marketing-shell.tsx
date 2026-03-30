@@ -10,13 +10,16 @@ export function MarketingShell({
   children: ReactNode;
 }) {
   return (
-    <main className="page-shell">
-      <section className="hero-panel">
-        <p className="eyebrow">Chordially</p>
-        <h1>{title}</h1>
-        <p className="hero-copy">{subtitle}</p>
-      </section>
-      {children}
-    </main>
+    <>
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <main className="shell" id="main-content">
+        <section className="hero">
+          <p className="eyebrow" aria-hidden="true">Chordially</p>
+          <h1>{title}</h1>
+          <p className="copy">{subtitle}</p>
+        </section>
+        {children}
+      </main>
+    </>
   );
 }
