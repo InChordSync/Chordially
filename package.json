@@ -4,7 +4,11 @@
   "private": true,
   "packageManager": "pnpm@10.6.5",
   "scripts": {
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
     "build": "turbo run build",
+    "dev:api": "pnpm --filter @chordially/api dev",
+    "dev:web": "pnpm --filter @chordially/web dev",
+    "dev:mobile": "pnpm --filter @chordially/mobile dev",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "turbo run test",

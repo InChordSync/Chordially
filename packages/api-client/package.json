@@ -2,6 +2,11 @@
   "name": "@chordially/api-client",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "lint": "echo 'No lint configured for @chordially/api-client'",
+    "typecheck": "echo 'No typecheck configured for @chordially/api-client'",
+    "test": "echo 'No tests configured for @chordially/api-client'"
+  },
   "main": "src/index.ts",
   "types": "src/index.ts"
 }

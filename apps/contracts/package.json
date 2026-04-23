@@ -5,6 +5,7 @@
   "scripts": {
     "build": "sh -c 'if command -v cargo >/dev/null 2>&1; then cargo build; else echo \"Skipping contracts build: cargo not installed\"; fi'",
     "lint": "echo 'No lint configured for @chordially/contracts'",
+    "typecheck": "echo 'No typecheck configured for @chordially/contracts'",
     "test": "echo 'No tests configured for @chordially/contracts'"
   }
 }

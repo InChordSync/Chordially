@@ -2,6 +2,11 @@
   "name": "@chordially/config",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "lint": "echo 'No lint configured for @chordially/config'",
+    "typecheck": "echo 'No typecheck configured for @chordially/config'",
+    "test": "echo 'No tests configured for @chordially/config'"
+  },
   "main": "index.js",
   "files": [
     "tsconfig.base.json",

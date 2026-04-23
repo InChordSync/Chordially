@@ -1,0 +1,12 @@
+# Active package ownership
+/apps/api/ @ehigodwin
+/apps/web/ @ehigodwin
+/apps/mobile/ @ehigodwin
+/apps/contracts/ @ehigodwin
+/packages/api-client/ @ehigodwin
+/packages/blockchain/ @ehigodwin
+/packages/config/ @ehigodwin
+/packages/types/ @ehigodwin
+/docs/ @ehigodwin
+/.github/ @ehigodwin
+/history/ @ehigodwin
