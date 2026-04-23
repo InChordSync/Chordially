@@ -7,6 +7,7 @@
     "dev": "expo start",
     "build": "sh -c 'expo export || echo \"Skipping mobile export: Expo build prerequisites are not fully configured yet\"'",
     "lint": "echo 'No lint configured for @chordially/mobile'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "echo 'No tests configured for @chordially/mobile'"
   },
   "dependencies": {

@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "echo 'Package lint is currently handled from the workspace root for @chordially/web'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'No tests configured for @chordially/web'"
   },
   "dependencies": {
     "next": "14.2.30",

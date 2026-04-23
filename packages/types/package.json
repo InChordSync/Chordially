@@ -2,6 +2,11 @@
   "name": "@chordially/types",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "lint": "echo 'No lint configured for @chordially/types'",
+    "typecheck": "echo 'No typecheck configured for @chordially/types'",
+    "test": "echo 'No tests configured for @chordially/types'"
+  },
   "main": "src/index.ts",
   "types": "src/index.ts"
 }

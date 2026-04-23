@@ -7,7 +7,9 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "echo 'No lint configured for @chordially/blockchain'"
+    "lint": "echo 'No lint configured for @chordially/blockchain'",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'No tests configured for @chordially/blockchain'"
   },
   "dependencies": {
     "stellar-sdk": "^12.2.0"
