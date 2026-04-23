@@ -52,3 +52,9 @@ next-env.d.ts
 
 # turbo
 .turbo
+
+# local roadmap and gh import helpers
+/docs/github-issue-roadmap.md
+/docs/github-issue-publisher.md
+/scripts/import-sprint-issues-to-gh.mjs
+/tooling/publish-github-issues.mjs
