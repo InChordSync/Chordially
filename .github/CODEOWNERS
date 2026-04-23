@@ -1,12 +1,12 @@
 # Active package ownership
-/apps/api/ @InChordSync/backend
-/apps/web/ @InChordSync/web
-/apps/mobile/ @InChordSync/mobile
-/apps/contracts/ @InChordSync/blockchain
-/packages/api-client/ @InChordSync/platform
-/packages/blockchain/ @InChordSync/blockchain
-/packages/config/ @InChordSync/platform
-/packages/types/ @InChordSync/platform
-/docs/ @InChordSync/maintainers
-/.github/ @InChordSync/maintainers
-/history/ @InChordSync/maintainers
+/apps/api/ @ehigodwin
+/apps/web/ @ehigodwin
+/apps/mobile/ @ehigodwin
+/apps/contracts/ @ehigodwin
+/packages/api-client/ @ehigodwin
+/packages/blockchain/ @ehigodwin
+/packages/config/ @ehigodwin
+/packages/types/ @ehigodwin
+/docs/ @ehigodwin
+/.github/ @ehigodwin
+/history/ @ehigodwin
