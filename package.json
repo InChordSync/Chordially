@@ -4,6 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.6.5",
   "scripts": {
+    "bootstrap:local": "node scripts/bootstrap-local.mjs",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "build": "turbo run build",
     "dev:api": "pnpm --filter @chordially/api dev",

@@ -9,12 +9,14 @@ This branch adds a standalone Express application structure that can be merged e
 
 ## Local setup
 
-1. Copy `.env.example` to `.env`
-2. Run `pnpm install` inside `apps/api`
-3. Run `pnpm check:env`
-4. Run `pnpm dev`
+1. From the repository root, run `node scripts/bootstrap-local.mjs`
+2. Or manually copy `.env.example` to `.env`
+3. Run `pnpm install` from the repository root
+4. Run `pnpm --filter @chordially/api check:env`
+5. Run `pnpm dev:api`
 
 ## Notes
 
 - Environment validation fails fast on boot so missing configuration is caught immediately.
 - The route/module layout is intentionally small and safe to extend in later issues without restructuring again.
+- Local infrastructure is provided through the repository `docker-compose.yml`.
