@@ -1,0 +1,39 @@
+# GitHub Issue and PR Labels
+# Apply with: gh label import .github/labels.yml
+
+labels:
+  - name: feature
+    color: "0075ca"
+    description: "New feature or request"
+
+  - name: bug
+    color: "d73a4a"
+    description: "Something is not working as expected"
+
+  - name: debt
+    color: "e4e669"
+    description: "Technical debt or code quality improvement"
+
+  - name: security
+    color: "b60205"
+    description: "Security vulnerability or hardening task"
+
+  - name: release
+    color: "0e8a16"
+    description: "Related to a version release or deployment"
+
+  - name: sprint-1
+    color: "bfd4f2"
+    description: "Scoped to Sprint 1"
+
+  - name: blocked
+    color: "e11d48"
+    description: "Progress is blocked and cannot proceed without external input"
+
+  - name: needs-review
+    color: "fbca04"
+    description: "Waiting for code review or design sign-off"
+
+  - name: good-first-issue
+    color: "7057ff"
+    description: "Good entry point for new contributors"
