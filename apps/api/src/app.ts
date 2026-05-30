@@ -1,4 +1,5 @@
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import { WALLET_AUTH_TELEMETRY_EVENTS } from "@chordially/types";
 import { z, ZodError } from "zod";
 
 import { env } from "./env.js";
@@ -19,6 +20,7 @@ import { rateLimiters } from "./rate-limiter.js";
 import { requestVerification, confirmVerification } from "./verification-store.js";
 import { requestPasswordReset, consumeResetToken } from "./reset-store.js";
 import { registerContract, openApiRouter } from "./lib/openapi-generator.js";
+import { emitWalletAuthTelemetry } from "./telemetry.js";
 
 // ── #334 – OpenAPI contracts for auth endpoints ───────────────────────────
 registerContract({
@@ -118,10 +120,22 @@ export function createApp(): Express {
         ?? req.socket.remoteAddress;
       const userAgent = req.headers["user-agent"];
       const { session, refreshToken } = loginUser({ ...payload, ip, userAgent });
+      emitWalletAuthTelemetry({
+        event: WALLET_AUTH_TELEMETRY_EVENTS.walletLinkSucceeded,
+        outcome: "success",
+        boundary: "api.auth.login",
+        subjectId: session.userId,
+      });
       // Redact telemetry from the response; it is stored server-side only.
       const { ip: _ip, userAgent: _ua, ...safeSession } = session;
       res.status(200).json({ message: "Login starter flow completed.", session: safeSession, refreshToken });
     } catch (err) {
+      emitWalletAuthTelemetry({
+        event: WALLET_AUTH_TELEMETRY_EVENTS.walletAuthFailed,
+        outcome: "failure",
+        boundary: "api.auth.login",
+        reason: err instanceof AuthServiceError ? err.code : "MALFORMED_REQUEST",
+      });
       next(err);
     }
   });
@@ -130,6 +144,12 @@ export function createApp(): Express {
   app.post("/api/v1/auth/logout", (req, res) => {
     const { token } = logoutSchema.parse(req.body);
     const revoked = logoutUser(token);
+    emitWalletAuthTelemetry({
+      event: WALLET_AUTH_TELEMETRY_EVENTS.walletLinkRevoked,
+      outcome: "revocation",
+      boundary: "api.auth.logout",
+      sessionsRevoked: revoked ? 1 : 0,
+    });
     res.status(200).json({
       message: revoked ? "Session revoked." : "Session was already absent.",
       sessionsRevoked: revoked ? 1 : 0,
@@ -140,6 +160,13 @@ export function createApp(): Express {
   app.post("/api/v1/auth/logout-all", requireAuth, (req, res) => {
     const session = res.locals["session"] as import("@chordially/types").AuthSession;
     const count = logoutAllSessions(session.userId);
+    emitWalletAuthTelemetry({
+      event: WALLET_AUTH_TELEMETRY_EVENTS.walletLinkRevoked,
+      outcome: "revocation",
+      boundary: "api.auth.logout_all",
+      subjectId: session.userId,
+      sessionsRevoked: count,
+    });
     res.status(200).json({
       message: "All sessions revoked.",
       sessionsRevoked: count,

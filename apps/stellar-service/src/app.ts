@@ -1,12 +1,14 @@
-import express from "express";
+import express, { type Express } from "express";
+import { WALLET_AUTH_TELEMETRY_EVENTS } from "@chordially/types";
 import { Networks } from "stellar-sdk";
 
 import { env } from "./env.js";
+import { emitWalletAuthTelemetry } from "./telemetry.js";
 
 const networkPassphrase =
   env.STELLAR_NETWORK === "mainnet" ? Networks.PUBLIC : Networks.TESTNET;
 
-export function createApp() {
+export function createApp(): Express {
   const app = express();
 
   app.get("/health", (_request, response) => {
@@ -26,6 +28,12 @@ export function createApp() {
   });
 
   app.get("/api/v1/stellar/starter-intent", (_request, response) => {
+    emitWalletAuthTelemetry({
+      event: WALLET_AUTH_TELEMETRY_EVENTS.walletLinkStarted,
+      outcome: "start",
+      boundary: "stellar.starter_intent",
+      network: env.STELLAR_NETWORK,
+    });
     response.json({
       asset: "USDC",
       useCase: "hackathon-mvp",
