@@ -56,6 +56,8 @@ export type AuthErrorCode =
   | "POLICY_VIOLATION"
   | "MALFORMED_REQUEST"
   | "FORBIDDEN"
+  | "ACCOUNT_DISABLED"
+  | "ACCOUNT_BANNED"
   | "TOKEN_EXPIRED"
   | "TOKEN_INVALID";
 

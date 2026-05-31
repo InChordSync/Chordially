@@ -5,6 +5,13 @@ export type AuthUser = {
   email: string;
   displayName: string;
   role: UserRole;
+  /**
+   * Starter-friendly account restriction flag.
+   * - "active": normal access
+   * - "disabled": temporarily blocked (e.g. moderation or safety)
+   * - "banned": permanently blocked
+   */
+  accountStatus?: "active" | "disabled" | "banned";
 };
 
 export type AuthSession = {

@@ -21,6 +21,16 @@ const schema = z.object({
   RATE_LIMIT_LOGIN_MAX: z.coerce.number().int().positive().default(10),
   /** Max refresh attempts per window per IP. */
   RATE_LIMIT_REFRESH_MAX: z.coerce.number().int().positive().default(30),
+  /**
+   * Comma-separated list of emails that should be treated as disabled accounts.
+   * Intended for starter/demo flows (e.g. "disabled@example.com,other@example.com").
+   */
+  DISABLED_ACCOUNTS: z.string().optional().default(""),
+  /**
+   * Comma-separated list of emails that should be treated as banned accounts.
+   * Intended for starter/demo flows (e.g. "banned@example.com").
+   */
+  BANNED_ACCOUNTS: z.string().optional().default(""),
 });
 
 export const env = schema.parse(process.env);

@@ -25,6 +25,19 @@ export class AuthServiceError extends Error {
 type RegisterInput = { email: string; password: string; displayName: string };
 type LoginInput    = { email: string; password: string; origin?: string; ip?: string; userAgent?: string };
 
+function parseEmailList(raw: string | undefined): Set<string> {
+  if (!raw) return new Set();
+  return new Set(
+    raw
+      .split(",")
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+const disabledAccounts = parseEmailList(env.DISABLED_ACCOUNTS);
+const bannedAccounts = parseEmailList(env.BANNED_ACCOUNTS);
+
 const users    = new Map<string, AuthUser & { password: string }>();
 const sessions = new Map<string, AuthSession>();
 const refreshTokens = new Map<string, RefreshToken>();
@@ -48,6 +61,7 @@ export function registerUser(input: RegisterInput): AuthUser {
     email,
     displayName: input.displayName.trim(),
     role: "builder",
+    accountStatus: "active",
     password: input.password,
   };
   users.set(email, user);
@@ -59,6 +73,14 @@ export function loginUser(input: LoginInput): { session: AuthSession; refreshTok
   const email = input.email.trim().toLowerCase();
   const user  = users.get(email);
   if (!user || user.password !== input.password) throw new AuthServiceError("INVALID_CREDENTIALS", "Invalid email or password.");
+
+  if (bannedAccounts.has(email) || user.accountStatus === "banned") {
+    throw new AuthServiceError("ACCOUNT_BANNED", "This account is banned.");
+  }
+
+  if (disabledAccounts.has(email) || user.accountStatus === "disabled") {
+    throw new AuthServiceError("ACCOUNT_DISABLED", "This account is disabled.");
+  }
 
   const now = new Date().toISOString();
 

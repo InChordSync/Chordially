@@ -10,6 +10,8 @@ import type {
   AuthErrorResponse,
 } from "@chordially/types/src/auth-contracts.js";
 
+import { restrictionFromAuthError } from "./account-restriction";
+
 declare const process: { env: Record<string, string | undefined> };
 
 const BASE = process.env["NEXT_PUBLIC_API_BASE_URL"] ?? "http://localhost:4000";
@@ -34,6 +36,18 @@ export const authClient = {
       method: "POST",
       body: JSON.stringify({ ...payload, origin: "web" }),
     }),
+
+  loginOrRestrictionRedirect: async (payload: LoginRequest) => {
+    const result = await authClient.login(payload);
+    if (result.ok) return result;
+    const restriction = restrictionFromAuthError(result.error.error);
+    if (restriction === "unknown") return result;
+    return {
+      ok: false as const,
+      error: result.error,
+      redirectTo: `/auth/restricted?status=${restriction}`,
+    };
+  },
 
   logout: (token: string) =>
     call<LogoutResponse>("/api/v1/auth/logout", {

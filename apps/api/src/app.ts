@@ -242,6 +242,8 @@ export function createApp(): Express {
     POLICY_VIOLATION:     422,
     MALFORMED_REQUEST:    400,
     FORBIDDEN:            403,
+    ACCOUNT_DISABLED:     403,
+    ACCOUNT_BANNED:       403,
     TOKEN_EXPIRED:        401,
     TOKEN_INVALID:        400,
   };
