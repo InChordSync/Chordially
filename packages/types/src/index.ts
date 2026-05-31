@@ -1,54 +1,58 @@
-export type UserRole = "fan" | "artist" | "admin";
+export type UserRole = "builder" | "artist" | "fan" | "admin";
 
-export interface AuthUser {
+export type AuthUser = {
   id: string;
   email: string;
-  username: string;
+  displayName: string;
   role: UserRole;
-}
+  /**
+   * Starter-friendly account restriction flag.
+   * - "active": normal access
+   * - "disabled": temporarily blocked (e.g. moderation or safety)
+   * - "banned": permanently blocked
+   */
+  accountStatus?: "active" | "disabled" | "banned";
+};
 
-export interface RegisterRequest {
-  email: string;
-  username: string;
-  password: string;
-  role?: UserRole;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
+export type AuthSession = {
   token: string;
-  user: AuthUser;
-}
+  userId: string;
+  createdAt: string;
+  /** ISO timestamp of the most recent activity on this session. */
+  lastSeenAt: string;
+  /** ISO timestamp when the session was revoked; undefined if still active. */
+  revokedAt?: string;
+  /** Hint about where the session originated, e.g. "web" or "mobile". */
+  origin?: string;
+  /** Client IP address captured at session creation (redacted in logs). */
+  ip?: string;
+  /** User-agent string captured at session creation (redacted in logs). */
+  userAgent?: string;
+};
 
-export interface SessionResponse {
-  authenticated: boolean;
-  user: AuthUser | null;
-}
+export type RefreshToken = {
+  token: string;
+  sessionToken: string;
+  userId: string;
+  createdAt: string;
+  /** ISO timestamp after which this refresh token is no longer valid. */
+  expiresAt: string;
+  /** ISO timestamp when this token was consumed by a rotation; undefined if unused. */
+  usedAt?: string;
+};
 
-export type ApiErrorCode =
-  | "VALIDATION_ERROR"
-  | "UNAUTHORIZED"
-  | "FORBIDDEN"
-  | "NOT_FOUND"
-  | "CONFLICT"
-  | "RATE_LIMITED"
-  | "INTERNAL_ERROR"
-  | "DEPENDENCY_ERROR";
+export type Milestone = {
+  key: string;
+  title: string;
+  goal: string;
+};
 
-export interface ApiErrorEnvelope {
-  error: {
-    code: ApiErrorCode;
-    message: string;
-    details?: unknown;
-  };
-  meta: {
-    requestId?: string;
-    apiVersion: string;
-  };
-}
-
-export const API_V1_PREFIX = "/api/v1";
+export type { AuthErrorCode } from "./auth-contracts.js";
+export {
+  WALLET_AUTH_TELEMETRY_EVENTS,
+  type WalletAuthTelemetryBoundary,
+  type WalletAuthTelemetryEventName,
+  type WalletAuthTelemetryOutcome,
+  type WalletAuthTelemetryPayload,
+  type WalletAuthTelemetryService,
+} from "./telemetry.js";

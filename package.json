@@ -4,24 +4,23 @@
   "private": true,
   "packageManager": "pnpm@10.6.5",
   "scripts": {
-    "bootstrap:local": "node scripts/bootstrap-local.mjs",
-    "smoke:auth": "node scripts/auth-smoke.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm test",
     "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "dev": "turbo run dev --parallel",
     "dev:api": "pnpm --filter @chordially/api dev",
     "dev:web": "pnpm --filter @chordially/web dev",
     "dev:mobile": "pnpm --filter @chordially/mobile dev",
-    "lint": "eslint .",
-    "repo:health": "node scripts/repo-health.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "turbo run test",
-    "dev": "turbo run dev --parallel"
+    "dev:stellar": "pnpm --filter @chordially/stellar-service dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.23.0",
     "eslint": "^9.23.0",
     "globals": "^16.0.0",
     "turbo": "^2.5.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.0.0"
   }
 }

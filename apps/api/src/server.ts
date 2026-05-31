@@ -1,8 +1,10 @@
-import { env } from "./config/env.js";
+import { createServer } from "node:http";
+
 import { createApp } from "./app.js";
+import { env } from "./env.js";
 
-const app = createApp();
+const server = createServer(createApp());
 
-app.listen(env.PORT, () => {
-  console.log(`API listening on port ${env.PORT}`);
+server.listen(env.PORT, () => {
+  console.log(`[api] listening on http://localhost:${env.PORT}`);
 });

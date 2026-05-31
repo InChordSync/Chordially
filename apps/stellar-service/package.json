@@ -1,0 +1,26 @@
+{
+  "name": "@chordially/stellar-service",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@chordially/types": "workspace:*",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "stellar-sdk": "^12.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.13.14",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.2"
+  }
+}

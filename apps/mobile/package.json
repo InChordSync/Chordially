@@ -5,23 +5,22 @@
   "main": "index.js",
   "scripts": {
     "dev": "expo start",
-    "build": "sh -c 'expo export || echo \"Skipping mobile export: Expo build prerequisites are not fully configured yet\"'",
-    "lint": "echo 'No lint configured for @chordially/mobile'",
+    "build": "expo export --output-dir web-build",
+    "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'No tests configured for @chordially/mobile'"
+    "test": "tsx --test tests/*.test.*"
   },
   "dependencies": {
-    "@babel/runtime": "^7.29.2",
-    "@chordially/blockchain": "workspace:*",
     "@chordially/types": "workspace:*",
     "@expo/metro-runtime": "~3.1.3",
     "expo": "~50.0.15",
     "react": "18.2.0",
-    "react-native": "0.73.6",
-    "react-native-web": "~0.19.6"
+    "react-native": "0.73.6"
   },
   "devDependencies": {
+    "@types/node": "^22.13.14",
     "@types/react": "^18.2.45",
+    "tsx": "^4.22.3",
     "typescript": "^5.5.4"
   }
 }

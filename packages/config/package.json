@@ -2,14 +2,14 @@
   "name": "@chordially/config",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "lint": "echo 'No lint configured for @chordially/config'",
-    "typecheck": "echo 'No typecheck configured for @chordially/config'",
-    "test": "echo 'No tests configured for @chordially/config'"
-  },
   "main": "index.js",
   "files": [
-    "tsconfig.base.json",
-    "eslint.config.cjs"
-  ]
+    "index.js",
+    "tsconfig.base.json"
+  ],
+  "scripts": {
+    "lint": "node -e \"console.log('config package has no standalone lint step')\"",
+    "typecheck": "node -e \"console.log('config package has no standalone typecheck step')\"",
+    "test": "node -e \"console.log('config package has no standalone tests')\""
+  }
 }
