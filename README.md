@@ -16,13 +16,13 @@ Creators can use the platform to build their presence, manage their profile, and
 
 The Stellar integration allows the platform to support fast, low-cost payment primitives that can later power features such as:
 
-* fan-to-creator payments,
-* creator support,
-* digital rewards,
-* wallet-based interactions,
-* payment confirmations,
-* on-chain transaction tracking,
-* creator monetization flows.
+- fan-to-creator payments,
+- creator support,
+- digital rewards,
+- wallet-based interactions,
+- payment confirmations,
+- on-chain transaction tracking,
+- creator monetization flows.
 
 The project is structured to support both early MVP development and future expansion into richer creator and fan experiences.
 
@@ -36,13 +36,13 @@ Creators are the main users who build and manage their public presence on Chordi
 
 The creator experience may include:
 
-* creator profile setup,
-* creator bio and public details,
-* music or content-related profile information,
-* fan engagement tools,
-* payment or support options,
-* activity history,
-* creator dashboard features.
+- creator profile setup,
+- creator bio and public details,
+- music or content-related profile information,
+- fan engagement tools,
+- payment or support options,
+- activity history,
+- creator dashboard features.
 
 The platform is intended to give creators a direct channel to connect with fans without relying only on traditional social media platforms.
 
@@ -54,12 +54,12 @@ Fans can use Chordially to discover creators, follow their activity, and engage 
 
 The fan experience may include:
 
-* browsing creator profiles,
-* engaging with creator content,
-* supporting creators through Stellar-powered payments,
-* viewing interaction or payment history,
-* participating in creator-led campaigns,
-* accessing mobile-first engagement flows.
+- browsing creator profiles,
+- engaging with creator content,
+- supporting creators through Stellar-powered payments,
+- viewing interaction or payment history,
+- participating in creator-led campaigns,
+- accessing mobile-first engagement flows.
 
 The mobile app is especially important for fan interactions because many fan engagement flows are expected to happen quickly, casually, and on the go.
 
@@ -71,13 +71,13 @@ Chordially includes a dedicated Stellar service to keep blockchain-related opera
 
 This service is responsible for handling Stellar-specific workflows such as:
 
-* wallet-related operations,
-* transaction preparation,
-* transaction submission,
-* payment status checks,
-* Horizon API communication,
-* Stellar network configuration,
-* payment and wallet abstractions used by the rest of the platform.
+- wallet-related operations,
+- transaction preparation,
+- transaction submission,
+- payment status checks,
+- Horizon API communication,
+- Stellar network configuration,
+- payment and wallet abstractions used by the rest of the platform.
 
 By isolating Stellar logic into its own service, the project remains easier to maintain and safer to extend as the payment layer grows.
 
@@ -105,17 +105,21 @@ Chordially is built with a modern full-stack TypeScript setup.
 ```txt
 chordially/
 ├── apps/
-│   ├── api/
-│   ├── web/
-│   ├── mobile/
-│   └── stellar-service/
+│   ├── api/        # @chordially/api    – Express modular monolith (auth)
+│   ├── web/        # @chordially/web    – Next.js web app (login/register)
+│   └── mobile/     # @chordially/mobile – React Native / Expo foundation
 │
 ├── packages/
-│   ├── config/
-│   └── types/
+│   ├── shared/     # @chordially/shared – shared types & validation schemas
+│   └── stellar/    # @chordially/stellar – Stellar integration scaffold
 │
+├── docs/           # architecture, environment, testing, contributing
+├── .github/workflows/  # per-package CI
 └── README.md
 ```
+
+See [docs/architecture.md](./docs/architecture.md) for more detail on how
+these pieces fit together.
 
 ---
 
@@ -123,102 +127,73 @@ chordially/
 
 ### `apps/api`
 
-The API app is the main backend service for Chordially.
+The API app is the main backend service for Chordially, built as an Express
+**modular monolith** (see [docs/architecture.md](./docs/architecture.md)).
 
-It handles the server-side logic needed by the web and mobile clients. This includes authentication-related routes, user flows, creator and fan data, and future business logic for engagement features.
+**Currently implemented:**
 
-Expected responsibilities include:
+- `modules/auth` — `POST /api/auth/register` and `POST /api/auth/login`,
+  backed by Prisma + SQLite, password hashing (bcrypt), and JWT issuance.
+- `modules/users` — owns the `User` persistence layer used by `modules/auth`.
+- `shared/middleware/auth.middleware.ts` — JWT bearer verification
+  (`requireAuth`), ready for future authenticated routes.
 
-* authentication and session-related endpoints,
-* user profile APIs,
-* creator profile APIs,
-* fan interaction APIs,
-* payment request coordination,
-* communication with the Stellar service,
-* shared business rules for web and mobile clients.
+**Future direction** (see Core Product Areas above): user/creator/fan profile
+APIs, payment request coordination with `packages/stellar`, and additional
+modules following the same convention.
 
 ---
 
 ### `apps/web`
 
-The web app provides the browser-based Chordially experience.
+The web app provides the browser-based Chordially experience, built with
+Next.js (App Router).
 
-It is intended for flows that benefit from a wider screen and richer layout, such as creator onboarding, creator dashboards, profile management, and administrative or operational views.
+**Currently implemented:**
 
-Expected responsibilities include:
+- `/login` and `/register` pages with client-side validation using
+  `@chordially/shared`'s zod schemas.
+- `AuthProvider` / `useAuth` context for session state (token + user stored
+  in `localStorage`).
+- A minimal home page reflecting authenticated vs. unauthenticated state.
 
-* landing and product pages,
-* creator onboarding,
-* creator profile management,
-* dashboard views,
-* account settings,
-* wallet/payment UI,
-* fan-facing creator pages.
+**Future direction:** creator onboarding, dashboards, profile management,
+account settings, and wallet/payment UI.
 
 ---
 
 ### `apps/mobile`
 
-The mobile app provides the React Native experience for Chordially.
+The mobile app is a React Native (Expo) + TypeScript foundation for the
+Chordially mobile experience.
 
-It is intended for mobile-first fan and creator interactions. Fans should be able to access creator experiences quickly, while creators can manage lightweight actions from their phones.
+**Currently implemented:**
 
-Expected responsibilities include:
-
-* mobile authentication flows,
-* fan discovery,
-* creator profile viewing,
-* fan engagement actions,
-* wallet/payment interactions,
-* mobile notifications or activity views,
-* simplified creator tools.
-
----
-
-### `apps/stellar-service`
-
-The Stellar service is responsible for blockchain and payment-related operations.
-
-Instead of mixing Stellar logic directly into the API, Chordially separates this into a dedicated service. This keeps the payment layer easier to test, replace, secure, and extend.
-
-Expected responsibilities include:
-
-* Stellar network configuration,
-* Horizon API interaction,
-* transaction creation,
-* transaction submission,
-* wallet-related utilities,
-* payment validation,
-* transaction status checks,
-* reusable Stellar abstractions for the API.
+- Project tooling (Expo, TypeScript, ESLint, Jest via `jest-expo`).
+- A pre-structured `src/{components,screens,navigation,hooks,services,utils,assets}`
+  layout for future feature work.
+- No authentication or screens yet — see Core Product Areas above for the
+  intended fan/creator mobile experience.
 
 ---
 
 ## Shared Packages
 
-### `packages/config`
+### `packages/shared`
 
-Shared configuration for the monorepo.
-
-This package contains reusable project defaults such as TypeScript configuration and other shared development settings used across apps.
+Shared TypeScript types and zod validation schemas used by both `apps/api`
+and `apps/web`, so request/response shapes and validation rules (e.g.
+`registerSchema`, `loginSchema`, `AuthUser`, `AuthResponse`) stay in sync
+across the stack.
 
 ---
 
-### `packages/types`
+### `packages/stellar`
 
-Shared TypeScript types used across the platform.
-
-This helps keep the API, web app, mobile app, and Stellar service aligned. Instead of redefining the same user, creator, payment, or response types in multiple places, common types can live here and be reused across the workspace.
-
-Examples of shared types may include:
-
-* user types,
-* creator profile types,
-* fan profile types,
-* authentication response types,
-* payment request types,
-* Stellar transaction types,
-* API response types.
+A compile-only scaffold for the future Stellar payment layer described in
+the Core Product Areas section above. It currently exports placeholder types
+and interfaces only — no blockchain or Horizon integration has been
+implemented yet.
 
 ---
 
@@ -228,10 +203,10 @@ Examples of shared types may include:
 
 Before running the project, make sure you have the following installed:
 
-* Node.js
-* pnpm
-* Git
-* Expo tooling for mobile development
+- Node.js
+- pnpm
+- Git
+- Expo tooling for mobile development
 
 ---
 
@@ -254,6 +229,9 @@ pnpm install
 
 ## Running the Apps
 
+Copy the `.env.example` file for each app you want to run (see
+[Environment Variables](#environment-variables) below) before starting it.
+
 Start the API service:
 
 ```bash
@@ -272,48 +250,27 @@ Start the mobile app:
 pnpm dev:mobile
 ```
 
-Start the Stellar service:
-
-```bash
-pnpm dev:stellar
-```
-
-For local development, each service should usually run in its own terminal window.
+For local development, each app should usually run in its own terminal window.
 
 ---
 
 ## Environment Variables
 
-Each app can have its own environment file.
-
-Recommended structure:
+Each app has a committed `.env.example` describing the variables it needs.
+Copy it to the file the app loads locally and fill in real values:
 
 ```txt
-apps/api/.env
-apps/web/.env.local
-apps/mobile/.env
-apps/stellar-service/.env
+apps/api/.env          # from apps/api/.env.example
+apps/web/.env.local    # from apps/web/.env.example
+apps/mobile/.env       # from apps/mobile/.env.example
 ```
 
-Example variables:
+See [docs/environment.md](./docs/environment.md) for the full list of
+variables per app.
 
-```env
-API_PORT=
-WEB_APP_URL=
-MOBILE_APP_SCHEME=
-DATABASE_URL=
-JWT_SECRET=
-
-STELLAR_NETWORK=
-STELLAR_HORIZON_URL=
-STELLAR_ISSUER_PUBLIC_KEY=
-STELLAR_DISTRIBUTION_PUBLIC_KEY=
-STELLAR_DISTRIBUTION_SECRET_KEY=
-```
-
-The exact variables may change as the platform grows.
-
-Do not commit real secrets, private keys, or production credentials.
+Do not commit real secrets, private keys, or production credentials — only
+`.env.example` files (and `apps/api/.env.test`, which holds non-sensitive
+test-only values) are checked in.
 
 ---
 
@@ -360,14 +317,14 @@ When working on Chordially, keep the codebase clear, typed, and maintainable.
 
 Recommended principles:
 
-* Keep product logic readable and easy to follow.
-* Use shared types where data crosses app boundaries.
-* Keep Stellar-specific logic inside `apps/stellar-service`.
-* Avoid duplicating API contracts across apps.
-* Keep web and mobile flows aligned where possible.
-* Prefer small, focused changes.
-* Document important setup or architecture decisions.
-* Do not commit secrets or private keys.
+- Keep product logic readable and easy to follow.
+- Use shared types where data crosses app boundaries.
+- Keep Stellar-specific logic inside `packages/stellar`.
+- Avoid duplicating API contracts across apps.
+- Keep web and mobile flows aligned where possible.
+- Prefer small, focused changes.
+- Document important setup or architecture decisions.
+- Do not commit secrets or private keys.
 
 ---
 
@@ -380,17 +337,21 @@ pnpm install
 pnpm dev:api
 pnpm dev:web
 pnpm dev:mobile
-pnpm dev:stellar
 ```
 
-Additional scripts may be added for:
+Workspace-wide checks (also run per-package in CI, see
+[docs/testing.md](./docs/testing.md)):
 
 ```bash
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm check    # lint + typecheck + test
 ```
+
+See [docs/contributing.md](./docs/contributing.md) for the recommended
+development workflow.
 
 ---
 
@@ -398,7 +359,7 @@ pnpm build
 
 Chordially is currently in active development.
 
-The current focus is on establishing the core application structure, authentication foundation, shared types, and Stellar service architecture. Once the base flows are stable, the project can expand into deeper creator and fan engagement features.
+The current focus is on establishing the core application structure, authentication foundation, shared types, and the Stellar package scaffold. Once the base flows are stable, the project can expand into deeper creator and fan engagement features.
 
 ---
 
