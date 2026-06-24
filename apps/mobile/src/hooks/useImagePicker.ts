@@ -10,7 +10,7 @@ export function useImagePicker() {
   const [image, setImage] = useState<PickedImage | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function pickImage() {
+  async function pickImage(): Promise<PickedImage | null> {
     setError(null)
 
     const permission =
@@ -18,7 +18,7 @@ export function useImagePicker() {
 
     if (!permission.granted) {
       setError("Permission to access photos was denied")
-      return
+      return null
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -29,14 +29,16 @@ export function useImagePicker() {
     })
 
     if (result.canceled || result.assets.length === 0) {
-      return
+      return null
     }
 
     const asset = result.assets[0]!
-    setImage({
+    const picked: PickedImage = {
       uri: asset.uri,
       mimeType: asset.mimeType ?? "image/jpeg",
-    })
+    }
+    setImage(picked)
+    return picked
   }
 
   function clearImage() {

@@ -21,9 +21,9 @@ export default function ProfileImagePicker({
   const displayUri = image?.uri ?? currentAvatarUrl
 
   async function handlePress() {
-    await pickImage()
-    if (image) {
-      onImagePicked(image.uri, image.mimeType)
+    const picked = await pickImage()
+    if (picked) {
+      onImagePicked(picked.uri, picked.mimeType)
     }
   }
 

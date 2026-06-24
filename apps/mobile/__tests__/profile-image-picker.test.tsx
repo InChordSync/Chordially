@@ -60,6 +60,30 @@ describe("ProfileImagePicker", () => {
     expect(mockLaunchLibrary).not.toHaveBeenCalled()
   })
 
+  it("calls onImagePicked after a successful pick", async () => {
+    mockRequestPermissions.mockResolvedValue({ granted: true })
+    mockLaunchLibrary.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: "file:///photo.jpg", mimeType: "image/jpeg" }],
+    })
+
+    render(
+      <ProfileImagePicker
+        currentAvatarUrl={null}
+        onImagePicked={onImagePicked}
+      />
+    )
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Pick profile image"))
+    })
+
+    expect(onImagePicked).toHaveBeenCalledWith(
+      "file:///photo.jpg",
+      "image/jpeg"
+    )
+  })
+
   it("does nothing when the user cancels the picker", async () => {
     mockRequestPermissions.mockResolvedValue({ granted: true })
     mockLaunchLibrary.mockResolvedValue({ canceled: true, assets: [] })
