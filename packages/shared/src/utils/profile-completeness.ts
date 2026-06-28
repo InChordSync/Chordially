@@ -63,3 +63,64 @@ export function computeFanCompleteness(
 
   return computeFromFields(fields)
 }
+
+export interface OnboardingRule {
+  key: string
+  label: string
+  description: string
+  fields: string[]
+}
+
+export const creatorOnboardingRules: OnboardingRule[] = [
+  {
+    key: "basic_info",
+    label: "Basic Info",
+    description: "Add your display name and profile photo",
+    fields: ["displayName", "avatarUrl"],
+  },
+  {
+    key: "bio",
+    label: "Bio",
+    description: "Tell fans about yourself",
+    fields: ["bio"],
+  },
+  {
+    key: "genre",
+    label: "Genre",
+    description: "Select your music genre",
+    fields: ["genre"],
+  },
+  {
+    key: "location",
+    label: "Location",
+    description: "Add your location",
+    fields: ["location"],
+  },
+]
+
+export interface OnboardingProgress {
+  rules: Array<OnboardingRule & { completed: boolean }>
+  completedRules: number
+  totalRules: number
+  progressPercent: number
+  score: number
+}
+
+export function computeCreatorOnboardingProgress(
+  profile: CreatorProfileResponse
+): OnboardingProgress {
+  const rules = creatorOnboardingRules.map((rule) => {
+    const completed = rule.fields.every((field) => {
+      const value = (profile as Record<string, unknown>)[field]
+      return value !== null && value !== undefined && value !== ""
+    })
+    return { ...rule, completed }
+  })
+
+  const completedRules = rules.filter((r) => r.completed).length
+  const totalRules = rules.length
+  const progressPercent = Math.round((completedRules / totalRules) * 100)
+  const { score } = computeCreatorCompleteness(profile)
+
+  return { rules, completedRules, totalRules, progressPercent, score }
+}

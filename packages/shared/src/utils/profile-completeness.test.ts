@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
   computeCreatorCompleteness,
+  computeCreatorOnboardingProgress,
   computeFanCompleteness,
   creatorFieldLabels,
+  creatorOnboardingRules,
   fanFieldLabels,
 } from "./profile-completeness.js"
 
@@ -149,5 +151,55 @@ describe("computeFanCompleteness", () => {
     })
     expect(result.score).toBe(30)
     expect(result.missingFields).toContain("genrePrefs")
+  })
+})
+
+describe("creatorOnboardingRules", () => {
+  it("defines rules for every field in the creator completeness check", () => {
+    const fieldKeys = ["displayName", "bio", "avatarUrl", "genre", "location"]
+    const ruleFields = creatorOnboardingRules.flatMap((r) => r.fields)
+    for (const key of fieldKeys) {
+      expect(ruleFields).toContain(key)
+    }
+  })
+})
+
+describe("computeCreatorOnboardingProgress", () => {
+  it("returns 0% and 0 completed when no fields are filled", () => {
+    const result = computeCreatorOnboardingProgress(baseCreator)
+    expect(result.completedRules).toBe(0)
+    expect(result.totalRules).toBe(4)
+    expect(result.progressPercent).toBe(0)
+    expect(result.score).toBe(0)
+  })
+
+  it("returns 100% and all rules completed when all fields are filled", () => {
+    const result = computeCreatorOnboardingProgress({
+      ...baseCreator,
+      displayName: "Solar Vibes",
+      bio: "Indie producer",
+      avatarUrl: "https://example.com/avatar.jpg",
+      genre: "Indie",
+      location: "Lagos",
+    })
+    expect(result.completedRules).toBe(4)
+    expect(result.progressPercent).toBe(100)
+  })
+
+  it("marks individual rules as completed based on their required fields", () => {
+    const result = computeCreatorOnboardingProgress({
+      ...baseCreator,
+      displayName: "Solar Vibes",
+      avatarUrl: "https://example.com/avatar.jpg",
+      genre: "Indie",
+    })
+    const basicInfo = result.rules.find((r) => r.key === "basic_info")
+    const bioRule = result.rules.find((r) => r.key === "bio")
+    const genreRule = result.rules.find((r) => r.key === "genre")
+    expect(basicInfo!.completed).toBe(true)
+    expect(bioRule!.completed).toBe(false)
+    expect(genreRule!.completed).toBe(true)
+    expect(result.completedRules).toBe(2)
+    expect(result.progressPercent).toBe(50)
   })
 })
