@@ -1,23 +1,30 @@
 "use client"
 
-import type { CreatorProfileResponse } from "@chordially/shared"
+import type { CreatorProfileResponse, FollowCountResponse } from "@chordially/shared"
 import { useParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { CreatorHeader } from "../../../components/creators/CreatorHeader"
+import { useAuth } from "../../../lib/auth-context"
 import { getCreatorBySlug } from "../../../lib/creator-client"
+import { apiFetch } from "../../../lib/api-client"
 
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ok"; profile: CreatorProfileResponse }
+  | { status: "ok"; profile: CreatorProfileResponse; followCount: FollowCountResponse }
 
 export default function CreatorProfilePage() {
   const params = useParams<{ slug: string }>()
+  const { token } = useAuth()
   const [state, setState] = useState<LoadState>({ status: "loading" })
 
   const load = useCallback(async () => {
     try {
-      const profile = await getCreatorBySlug(params.slug)
-      setState({ status: "ok", profile })
+      const [profile, followCount] = await Promise.all([
+        getCreatorBySlug(params.slug),
+        apiFetch<FollowCountResponse>(`/api/creators/${encodeURIComponent(params.slug)}/follow-count`),
+      ])
+      setState({ status: "ok", profile, followCount })
     } catch {
       setState({ status: "error", message: "Creator not found" })
     }
@@ -40,51 +47,16 @@ export default function CreatorProfilePage() {
     )
   }
 
-  const { profile } = state
+  const { profile, followCount } = state
 
   return (
-    <main>
-      <div>
-        {profile.avatarUrl ? (
-          <img
-            src={profile.avatarUrl}
-            alt={`${profile.displayName}'s avatar`}
-            width={120}
-            height={120}
-          />
-        ) : (
-          <div
-            aria-label="Default avatar"
-            style={{
-              width: 120,
-              height: 120,
-              borderRadius: "50%",
-              background: "#ddd",
-            }}
-          />
-        )}
-      </div>
-
-      <h1>{profile.displayName}</h1>
-
-      {profile.bio && <p>{profile.bio}</p>}
-
-      <dl>
-        {profile.genre && (
-          <>
-            <dt>Genre</dt>
-            <dd>{profile.genre}</dd>
-          </>
-        )}
-        {profile.location && (
-          <>
-            <dt>Location</dt>
-            <dd>{profile.location}</dd>
-          </>
-        )}
-      </dl>
-
-      {profile.isVerified && <span aria-label="Verified">Verified</span>}
+    <main style={{ maxWidth: "48rem", padding: 0 }}>
+      <CreatorHeader
+        profile={profile}
+        followerCount={followCount.followers}
+        followingCount={followCount.following}
+        token={token}
+      />
     </main>
   )
 }
