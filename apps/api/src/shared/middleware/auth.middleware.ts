@@ -26,3 +26,23 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
     throw new AppError(401, "UNAUTHORIZED", "Invalid or expired token")
   }
 }
+
+export function requireOptionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  const header = req.headers.authorization
+
+  if (!header || !header.startsWith(BEARER_PREFIX)) {
+    next()
+    return
+  }
+
+  const token = header.slice(BEARER_PREFIX.length)
+
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload
+    req.userId = payload.sub
+  } catch {
+    // token invalid — continue without auth
+  }
+
+  next()
+}
