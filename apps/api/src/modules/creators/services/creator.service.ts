@@ -1,7 +1,9 @@
 import { AppError } from "../../../shared/errors/app-error.js"
 import { generateUniqueSlug } from "../../../shared/utils/slug.js"
 import { creatorRepository } from "../repositories/creator.repository.js"
+import { searchIndexService } from "../../search/services/search-index.service.js"
 import type {
+  AvailabilitySlot,
   CreateCreatorInput,
   CreatorProfile,
   UpdateCreatorInput,
@@ -35,7 +37,11 @@ export const creatorService = {
       creatorRepository.findBySlug
     )
 
-    return creatorRepository.create({ ...input, slug })
+    const profile = await creatorRepository.create({ ...input, slug })
+
+    searchIndexService.indexCreator(profile.id).catch(() => {})
+
+    return profile
   },
 
   async updateCreatorProfile(
@@ -56,6 +62,69 @@ export const creatorService = {
       )
     }
 
-    return creatorRepository.update(id, input)
+    const updated = await creatorRepository.update(id, input)
+
+    searchIndexService.indexCreator(updated.id).catch(() => {})
+
+    return updated
+  },
+
+  async updateTags(
+    id: string,
+    tags: string[],
+    requestingUserId: string
+  ): Promise<CreatorProfile> {
+    const profile = await creatorRepository.findById(id)
+    if (!profile) {
+      throw new AppError(404, "CREATOR_NOT_FOUND", "Creator profile not found")
+    }
+
+    if (profile.userId !== requestingUserId) {
+      throw new AppError(403, "FORBIDDEN", "You do not have permission to edit this profile")
+    }
+
+    const updated = await creatorRepository.updateTags(id, tags)
+
+    searchIndexService.indexCreator(updated.id).catch(() => {})
+
+    return updated
+  },
+
+  async updateAvailability(
+    id: string,
+    availability: AvailabilitySlot[],
+    requestingUserId: string
+  ): Promise<CreatorProfile> {
+    const profile = await creatorRepository.findById(id)
+    if (!profile) {
+      throw new AppError(404, "CREATOR_NOT_FOUND", "Creator profile not found")
+    }
+
+    if (profile.userId !== requestingUserId) {
+      throw new AppError(403, "FORBIDDEN", "You do not have permission to edit this profile")
+    }
+
+    return creatorRepository.updateAvailability(id, availability)
+  },
+
+  async activityPing(
+    id: string,
+    requestingUserId: string
+  ): Promise<CreatorProfile> {
+    const profile = await creatorRepository.findById(id)
+    if (!profile) {
+      throw new AppError(404, "CREATOR_NOT_FOUND", "Creator profile not found")
+    }
+
+    if (profile.userId !== requestingUserId) {
+      throw new AppError(403, "FORBIDDEN", "You do not have permission to edit this profile")
+    }
+
+    const newScore = profile.activityScore + 1
+    const updated = await creatorRepository.updateActivity(id, newScore)
+
+    searchIndexService.indexCreator(updated.id).catch(() => {})
+
+    return updated
   },
 }

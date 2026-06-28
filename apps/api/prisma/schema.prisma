@@ -15,21 +15,31 @@ model User {
   updatedAt      DateTime        @updatedAt
   creatorProfile CreatorProfile?
   fanProfile     FanProfile?
+  follows        Follow[]        @relation("Follower")
+  followers      Follow[]        @relation("Following")
+  bookmarks      Bookmark[]
+  onboardingSteps OnboardingStep[]
 }
 
 model CreatorProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  displayName String
-  slug        String   @unique
-  bio         String?
-  avatarUrl   String?
-  genre       String?
-  location    String?
-  isVerified  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName     String
+  slug            String          @unique
+  bio             String?
+  avatarUrl       String?
+  bannerUrl       String?
+  genre           String?
+  location        String?
+  tags            String          @default("[]")
+  activityScore   Float           @default(0)
+  lastActiveAt    DateTime?
+  availability    String          @default("[]")
+  isVerified      Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  mediaAssets     MediaAsset[]
 }
 
 model FanProfile {
@@ -40,5 +50,68 @@ model FanProfile {
   avatarUrl   String?
   genrePrefs  String   @default("[]")
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MediaAsset {
+  id            String         @id @default(cuid())
+  creatorId     String
+  creator       CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  type          String
+  url           String
+  altText       String?
+  width         Int?
+  height        Int?
+  isCover       Boolean        @default(false)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creatorId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, creatorId])
+}
+
+model OnboardingStep {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stepKey   String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, stepKey])
+}
+
+model SearchIndexEntry {
+  id          String   @id @default(cuid())
+  creatorId   String   @unique
+  displayName String
+  slug        String
+  bio         String?
+  genre       String?
+  location    String?
+  tags        String   @default("[]")
+  activityScore Float  @default(0)
+  followerCount Int    @default(0)
+  indexedAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

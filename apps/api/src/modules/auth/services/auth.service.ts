@@ -3,6 +3,7 @@ import jwt, { type SignOptions } from "jsonwebtoken"
 import { env } from "../../../shared/config/env.js"
 import { AppError } from "../../../shared/errors/app-error.js"
 import { userService } from "../../users/services/user.service.js"
+import { onboardingRepository } from "../../users/repositories/onboarding.repository.js"
 import { toAuthUserResponse, type AuthResult } from "../types/auth.types.js"
 import type { LoginInput, RegisterInput } from "../validators/auth.validators.js"
 
@@ -30,6 +31,18 @@ export const authService = {
 
     const passwordHash = await bcrypt.hash(input.password, PASSWORD_SALT_ROUNDS)
     const user = await userService.create({ email: input.email, passwordHash })
+
+    const ALL_STEPS = [
+      "displayName",
+      "avatarUrl",
+      "bio",
+      "genre",
+      "location",
+      "tags",
+      "bannerUrl",
+      "genrePrefs",
+    ]
+    await onboardingRepository.createSteps(user.id, ALL_STEPS)
 
     return { user: toAuthUserResponse(user), token: issueToken(user.id) }
   },
