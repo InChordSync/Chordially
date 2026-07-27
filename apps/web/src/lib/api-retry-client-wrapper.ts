@@ -1,4 +1,4 @@
-import { ApiRetryHandler } from '@qyou/shared';
+import { ApiRetryHandler } from '@chordially/shared';
 
 export async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
   return ApiRetryHandler.executeWithRetry(async () => {

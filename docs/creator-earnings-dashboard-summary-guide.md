@@ -11,4 +11,4 @@ This document outlines the creator earnings dashboard summary layout, currency a
    - `CreatorEarningsSummaryCard`: React component displaying lifetime earnings and pending payout metrics.
 
 3. **Validation Schemas & Interfaces**:
-   - `creatorEarningsSummarySchema` and `CurrencyAmount` defined in `@qyou/shared`.
+   - `creatorEarningsSummarySchema` and `CurrencyAmount` defined in `@chordially/shared`.

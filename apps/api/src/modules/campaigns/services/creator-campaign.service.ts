@@ -2,7 +2,7 @@ import {
   campaignMetadataRecordSchema,
   type CampaignMetadataRecord,
   type CampaignMetadataRecordInput,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class CreatorCampaignService {
   private readonly campaigns: Map<string, CampaignMetadataRecord> = new Map();

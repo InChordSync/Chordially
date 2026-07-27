@@ -11,4 +11,4 @@ This document specifies the challenge session lifecycle, cryptographic signature
    - `WalletLinkVerificationBadge`: React component displaying linked wallet addresses and verification status badges.
 
 3. **Validation Schemas & Interfaces**:
-   - `walletLinkChallengeSessionSchema` and `WalletLinkChallengeSession` defined in `@qyou/shared`.
+   - `walletLinkChallengeSessionSchema` and `WalletLinkChallengeSession` defined in `@chordially/shared`.

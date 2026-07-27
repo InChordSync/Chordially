@@ -1,7 +1,7 @@
 import {
   paymentRecordItemSchema,
   type PaymentRecordItem,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class PaymentHistoryService {
   private readonly transactions: Map<string, PaymentRecordItem[]> = new Map();

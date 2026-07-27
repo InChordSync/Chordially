@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { LinkStepState } from '@qyou/shared';
+import type { LinkStepState } from '@chordially/shared';
 
 export function WalletChallengeInitiationForm() {
   const [address, setAddress] = useState('');

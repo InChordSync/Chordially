@@ -11,4 +11,4 @@ This document details the wallet challenge initiation form component, public add
    - `WalletChallengeInitiationForm`: React component rendering wallet address inputs and challenge initiation controls.
 
 3. **Validation Schemas & Interfaces**:
-   - `walletInitiationFormDataSchema` and `ChallengeResponsePayload` defined in `@qyou/shared`.
+   - `walletInitiationFormDataSchema` and `ChallengeResponsePayload` defined in `@chordially/shared`.

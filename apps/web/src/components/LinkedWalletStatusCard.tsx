@@ -1,5 +1,5 @@
 import React from 'react';
-import type { WalletConnectionDetails } from '@qyou/shared';
+import type { WalletConnectionDetails } from '@chordially/shared';
 
 interface LinkedWalletStatusCardProps {
   wallet?: WalletConnectionDetails;

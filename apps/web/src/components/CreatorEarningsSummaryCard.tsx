@@ -1,5 +1,5 @@
 import React from 'react';
-import { TipAmountFormatter } from '@qyou/shared';
+import { TipAmountFormatter } from '@chordially/shared';
 
 interface CreatorEarningsSummaryCardProps {
   lifetimeEarningsCents?: number;

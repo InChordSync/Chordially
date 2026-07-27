@@ -2,7 +2,7 @@ import {
   type BacklogItemSummary,
   type SnapshotExportOptionsInput,
   snapshotExportOptionsSchema,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class SprintSnapshotWriterService {
   public generateMarkdownSnapshot(

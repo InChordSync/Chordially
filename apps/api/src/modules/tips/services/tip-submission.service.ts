@@ -3,7 +3,7 @@ import {
   type PaymentIntentRecord,
   type StellarTxBuildResult,
   type TipSubmissionPayloadInput,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class TipSubmissionService {
   public async submitCreatorTip(input: TipSubmissionPayloadInput): Promise<{ intent: PaymentIntentRecord; txResult: StellarTxBuildResult }> {

@@ -11,4 +11,4 @@ This document specifies the creator campaign creation wizard steps, goal schemas
    - `CampaignCreationWizardModal`: React UI component guiding creators through campaign setup steps.
 
 3. **Validation Schemas & Interfaces**:
-   - `campaignMetadataRecordSchema` and `CampaignTargetGoal` defined in `@qyou/shared`.
+   - `campaignMetadataRecordSchema` and `CampaignTargetGoal` defined in `@chordially/shared`.
