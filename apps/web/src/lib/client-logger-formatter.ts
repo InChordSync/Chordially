@@ -1,4 +1,3 @@
-import { StructuredRequestLogger } from '@qyou/shared';
 
 export function logClientEvent(eventMessage: string, meta?: Record<string, unknown>): void {
   const logData = {
