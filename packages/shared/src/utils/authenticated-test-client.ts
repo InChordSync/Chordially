@@ -1,8 +1,8 @@
 import {
   testUserContextSchema,
-  type MockAuthTokenHeader,
   type TestUserContextInput,
-} from '../validation/authenticated-test-helpers.schemas';
+} from '../validation/authenticated-test-helpers.schemas.js';
+import type { MockAuthTokenHeader } from '../types/authenticated-test-helpers.types.js';
 
 export class AuthenticatedTestClient {
   public static createTestAuthHeaders(user: TestUserContextInput): MockAuthTokenHeader {
