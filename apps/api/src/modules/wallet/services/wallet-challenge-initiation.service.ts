@@ -3,7 +3,7 @@ import {
   walletInitiationFormDataSchema,
   type ChallengeResponsePayload,
   type WalletInitiationFormDataInput,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class WalletChallengeInitiationService {
   public async initiateChallenge(formData: WalletInitiationFormDataInput): Promise<ChallengeResponsePayload> {

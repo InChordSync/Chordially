@@ -11,4 +11,4 @@ This document details the single-use nonce validation rules, replay prevention c
    - `apps/web/src/lib/wallet-replay-guard-client.ts`: Utility function `isChallengeNonceFresh`.
 
 3. **Validation Schemas & Interfaces**:
-   - `challengeValidationResultSchema` and `ChallengeValidationResult` defined in `@qyou/shared`.
+   - `challengeValidationResultSchema` and `ChallengeValidationResult` defined in `@chordially/shared`.

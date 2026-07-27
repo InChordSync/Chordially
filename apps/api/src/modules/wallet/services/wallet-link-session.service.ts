@@ -3,7 +3,7 @@ import {
   walletLinkChallengeSessionSchema,
   type SignatureVerificationPayloadInput,
   type WalletLinkChallengeSession,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class WalletLinkSessionService {
   public async createChallengeSession(userId: string, walletAddress: string): Promise<WalletLinkChallengeSession> {

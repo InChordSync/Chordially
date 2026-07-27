@@ -1,4 +1,4 @@
-import type { TestUserContext } from '@qyou/shared';
+import type { TestUserContext } from '@chordially/shared';
 
 export class RepeatableFixtureBuilder {
   public static createDefaultUser(override?: Partial<TestUserContext>): TestUserContext {

@@ -1,7 +1,7 @@
 import {
   structuredLogEntrySchema,
   type StructuredLogEntry,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class StructuredRequestLogger {
   public static createLogEntry(

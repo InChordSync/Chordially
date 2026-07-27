@@ -1,7 +1,7 @@
 import {
   fanEntitlementRecordSchema,
   type FanEntitlementRecord,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class RewardEntitlementService {
   public evaluateFanThreshold(fanId: string, creatorId: string, totalSupportCents: number): FanEntitlementRecord | null {

@@ -2,7 +2,7 @@ import {
   sanitizedWalletLogPayloadSchema,
   type SanitizedWalletLogPayload,
   type WalletAuditEventType,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class WalletAuditLoggerService {
   public logWalletEvent(sessionId: string, rawWalletAddress: string, eventType: WalletAuditEventType): SanitizedWalletLogPayload {

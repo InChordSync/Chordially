@@ -11,4 +11,4 @@ This document details the linked wallet status card UI component, connection met
    - `LinkedWalletStatusCard`: React component displaying connected Stellar public keys and network badges.
 
 3. **Validation Schemas & Interfaces**:
-   - `walletAccountCardStateSchema` and `WalletAccountCardState` defined in `@qyou/shared`.
+   - `walletAccountCardStateSchema` and `WalletAccountCardState` defined in `@chordially/shared`.

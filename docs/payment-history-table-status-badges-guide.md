@@ -11,4 +11,4 @@ This document details the payment history table component, transaction record da
    - `PaymentHistoryTable`: React component rendering transaction rows with status badges.
 
 3. **Validation Schemas & Interfaces**:
-   - `paymentRecordItemSchema` and `PaymentRecordItem` defined in `@qyou/shared`.
+   - `paymentRecordItemSchema` and `PaymentRecordItem` defined in `@chordially/shared`.

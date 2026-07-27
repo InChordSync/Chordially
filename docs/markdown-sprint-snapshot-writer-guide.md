@@ -11,4 +11,4 @@ This document details the markdown table formatting specifications, options sche
    - `SprintSnapshotExportButton`: React component initiating local markdown file downloads.
 
 3. **Validation Schemas & Interfaces**:
-   - `snapshotExportOptionsSchema` and `BacklogItemSummary` defined in `@qyou/shared`.
+   - `snapshotExportOptionsSchema` and `BacklogItemSummary` defined in `@chordially/shared`.

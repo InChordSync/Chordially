@@ -11,4 +11,4 @@ This document details the structured JSON logging format, trace context propagat
    - `apps/web/src/lib/client-logger-formatter.ts`: Utility function `logClientEvent`.
 
 3. **Validation Schemas & Interfaces**:
-   - `structuredLogEntrySchema` and `StructuredLogEntry` defined in `@qyou/shared`.
+   - `structuredLogEntrySchema` and `StructuredLogEntry` defined in `@chordially/shared`.

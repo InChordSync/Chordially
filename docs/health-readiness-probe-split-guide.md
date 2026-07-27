@@ -11,4 +11,4 @@ This document specifies the deployment probe endpoints (`/healthz` and `/readyz`
    - `apps/web/src/lib/deployment-probe-client.ts`: Utility functions `fetchLivenessProbe` and `fetchReadinessProbe`.
 
 3. **Validation Schemas & Interfaces**:
-   - `livenessProbeResponseSchema` and `readinessProbeResponseSchema` defined in `@qyou/shared`.
+   - `livenessProbeResponseSchema` and `readinessProbeResponseSchema` defined in `@chordially/shared`.

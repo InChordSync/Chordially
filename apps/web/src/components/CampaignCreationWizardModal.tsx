@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { CampaignWizardStep } from '@qyou/shared';
+import type { CampaignWizardStep } from '@chordially/shared';
 
 interface CampaignCreationWizardModalProps {
   isOpen: boolean;
