@@ -2,7 +2,7 @@ import {
   duplicateCheckResultSchema,
   type DuplicateCheckResult,
   type IdempotencyKeyRecord,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class PaymentIdempotencyGuardService {
   private readonly records: Map<string, IdempotencyKeyRecord> = new Map();

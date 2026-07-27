@@ -11,4 +11,4 @@ This document details the tip submission endpoints, Stellar XDR construction rul
    - `apps/web/src/lib/tip-submission-client.ts`: Utility function `submitTipToCreator` sending payloads to backend APIs.
 
 3. **Validation Schemas & Interfaces**:
-   - `tipSubmissionPayloadSchema` and `PaymentIntentRecord` defined in `@qyou/shared`.
+   - `tipSubmissionPayloadSchema` and `PaymentIntentRecord` defined in `@chordially/shared`.

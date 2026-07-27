@@ -1,4 +1,4 @@
-import { HorizonAdapterBoundary, type HorizonAccountResponse } from '@qyou/shared';
+import { HorizonAdapterBoundary, type HorizonAccountResponse } from '@chordially/shared';
 
 export class StellarHorizonClientService {
   private readonly adapter = new HorizonAdapterBoundary();

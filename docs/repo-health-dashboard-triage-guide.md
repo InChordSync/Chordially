@@ -11,4 +11,4 @@ This document specifies the repo health scoring rules, technical debt metric cat
    - `RepoHealthDashboardCard`: React component displaying repository health scorecards and triage status indicators.
 
 3. **Validation Schemas & Interfaces**:
-   - `repoHealthReportSchema` and `HealthCheckMetric` defined in `@qyou/shared`.
+   - `repoHealthReportSchema` and `HealthCheckMetric` defined in `@chordially/shared`.

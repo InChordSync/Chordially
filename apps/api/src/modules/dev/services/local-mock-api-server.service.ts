@@ -2,7 +2,7 @@ import {
   mockServerConfigSchema,
   type MockServerConfig,
   type MockServerConfigInput,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class LocalMockApiServerService {
   private config: MockServerConfig;

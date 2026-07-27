@@ -3,7 +3,7 @@ import {
   readinessProbeResponseSchema,
   type LivenessProbeResponse,
   type ReadinessProbeResponse,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class DeploymentProbesController {
   private readonly startTime = Date.now();

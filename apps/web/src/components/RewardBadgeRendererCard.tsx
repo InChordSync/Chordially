@@ -1,5 +1,5 @@
 import React from 'react';
-import type { DigitalRewardTier } from '@qyou/shared';
+import type { DigitalRewardTier } from '@chordially/shared';
 
 interface RewardBadgeRendererCardProps {
   badges?: DigitalRewardTier[];

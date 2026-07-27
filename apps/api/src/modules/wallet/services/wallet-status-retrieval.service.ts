@@ -1,7 +1,7 @@
 import {
   walletAccountCardStateSchema,
   type WalletAccountCardState,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class WalletStatusRetrievalService {
   public async getAccountWalletStatus(userId: string): Promise<WalletAccountCardState> {

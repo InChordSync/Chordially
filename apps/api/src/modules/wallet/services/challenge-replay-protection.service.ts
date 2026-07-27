@@ -1,7 +1,7 @@
 import {
   challengeValidationResultSchema,
   type ChallengeValidationResult,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class ChallengeReplayProtectionService {
   private readonly usedNonces: Set<string> = new Set();

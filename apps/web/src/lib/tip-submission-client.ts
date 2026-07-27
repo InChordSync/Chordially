@@ -1,4 +1,4 @@
-import type { TipSubmissionPayloadInput } from '@qyou/shared';
+import type { TipSubmissionPayloadInput } from '@chordially/shared';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 

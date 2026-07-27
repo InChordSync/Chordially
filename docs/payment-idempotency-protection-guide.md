@@ -11,4 +11,4 @@ This document details the UUID idempotency header requirements, request locking 
    - `apps/web/src/lib/idempotent-payment-client.ts`: Utility function `generatePaymentIdempotencyKey`.
 
 3. **Validation Schemas & Interfaces**:
-   - `idempotencyKeyRecordSchema` and `DuplicateCheckResult` defined in `@qyou/shared`.
+   - `idempotencyKeyRecordSchema` and `DuplicateCheckResult` defined in `@chordially/shared`.

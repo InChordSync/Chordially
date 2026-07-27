@@ -11,4 +11,4 @@ This document details the reward unlock criteria, fan entitlement evaluation ser
    - `RewardBadgeRendererCard`: React component rendering unlocked reward badges.
 
 3. **Validation Schemas & Interfaces**:
-   - `fanEntitlementRecordSchema` and `DigitalRewardTier` defined in `@qyou/shared`.
+   - `fanEntitlementRecordSchema` and `DigitalRewardTier` defined in `@chordially/shared`.

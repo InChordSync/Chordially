@@ -1,7 +1,7 @@
 import {
   repoHealthReportSchema,
   type RepoHealthReport,
-} from '@qyou/shared';
+} from '@chordially/shared';
 
 export class RepoHealthEvaluatorService {
   public evaluateRepoHealth(): RepoHealthReport {

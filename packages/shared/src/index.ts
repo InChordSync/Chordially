@@ -46,7 +46,6 @@ export * from "./validation/wallet-observability.schemas.js"
 
 export * from "./utils/api-retry-handler.js"
 export * from "./utils/authenticated-test-client.js"
-export * from "./utils/discovery-analytics.js"
 export * from "./utils/horizon-adapter-boundary.js"
 export * from "./utils/profile-completeness.js"
 export * from "./utils/tip-amount-formatter.js"

@@ -11,4 +11,4 @@ This document specifies the observability-safe logging format, address masking f
    - `apps/web/src/lib/wallet-audit-sanitizer-client.ts`: Utility function `maskWalletPublicKeyForLogging`.
 
 3. **Validation Schemas & Interfaces**:
-   - `sanitizedWalletLogPayloadSchema` and `SanitizedWalletLogPayload` defined in `@qyou/shared`.
+   - `sanitizedWalletLogPayloadSchema` and `SanitizedWalletLogPayload` defined in `@chordially/shared`.
