@@ -1,8 +1,8 @@
 import {
   retryPolicyOptionsSchema,
   type RetryPolicyOptionsInput,
-  type RetryAttemptLog,
-} from '../validation/api-retry-policy.schemas';
+} from '../validation/api-retry-policy.schemas.js';
+import type { RetryAttemptLog } from '../types/api-retry-policy.types.js';
 
 export class ApiRetryHandler {
   public static async executeWithRetry<T>(

@@ -1,9 +1,9 @@
 import {
   horizonAccountResponseSchema,
   horizonNetworkConfigSchema,
-  type HorizonAccountResponse,
   type HorizonNetworkConfigInput,
-} from '../validation/horizon-adapter.schemas';
+} from '../validation/horizon-adapter.schemas.js';
+import type { HorizonAccountResponse } from '../types/horizon-adapter.types.js';
 
 export class HorizonAdapterBoundary {
   private readonly config: HorizonNetworkConfigInput;

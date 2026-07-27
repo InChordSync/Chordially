@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PaymentRecordItem } from '@qyou/shared';
+import type { PaymentRecordItem } from '@chordially/shared';
 
 interface PaymentHistoryTableProps {
   records?: PaymentRecordItem[];
@@ -20,7 +20,7 @@ export function PaymentHistoryTable({ records = [] }: PaymentHistoryTableProps) 
         <tbody>
           {records.length === 0 ? (
             <tr>
-              <td colSpan={4} style={{ padding: '16px', color: '#64748b', textAlignment: 'center' }}>
+              <td colSpan={4} style={{ padding: '16px', color: '#64748b', textAlign: 'center' }}>
                 No recent payment transactions found.
               </td>
             </tr>
