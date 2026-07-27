@@ -2,7 +2,6 @@ import {
   retryPolicyOptionsSchema,
   type RetryPolicyOptionsInput,
 } from '../validation/api-retry-policy.schemas.js';
-import type { RetryAttemptLog } from '../types/api-retry-policy.types.js';
 
 export class ApiRetryHandler {
   public static async executeWithRetry<T>(
@@ -16,13 +15,14 @@ export class ApiRetryHandler {
     while (attempt <= config.maxRetries) {
       try {
         return await fn();
-      } catch (error: any) {
+      } catch (error: unknown) {
         attempt++;
         if (attempt > config.maxRetries) {
           throw error;
         }
 
-        const statusCode = error?.status ?? error?.statusCode;
+        const errObj = error as { status?: number; statusCode?: number };
+        const statusCode = errObj?.status ?? errObj?.statusCode;
         if (statusCode && !config.retryableStatusCodes.includes(statusCode)) {
           throw error;
         }
