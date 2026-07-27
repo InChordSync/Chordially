@@ -28,7 +28,6 @@ export function CompactCreatorCard({
     const prevFollowing = following
     const prevCount = followerCount
 
-    // Local optimistic update
     const nextFollowing = !prevFollowing
     setFollowing(nextFollowing)
     setFollowerCount(nextFollowing ? prevCount + 1 : prevCount - 1)
@@ -42,7 +41,6 @@ export function CompactCreatorCard({
         }
       }
     } catch {
-      // Local optimistic rollback on error (#690)
       setFollowing(prevFollowing)
       setFollowerCount(prevCount)
     } finally {
