@@ -17,6 +17,14 @@ export interface Sep24TransactionInfo {
   status: Sep24TransactionStatus
   amountIn?: string
   message?: string
+  /**
+   * Withdrawal-only: the Stellar account the anchor wants the on-chain
+   * payment sent to, and an optional memo identifying this withdrawal to
+   * the anchor. Populated once the anchor is ready to receive funds
+   * (typically once status reaches "pending_user_transfer_start").
+   */
+  withdrawAnchorAccount?: string
+  withdrawMemo?: string
 }
 
 export interface StartInteractiveDepositInput {
@@ -25,12 +33,20 @@ export interface StartInteractiveDepositInput {
   account: string
 }
 
-export interface StartInteractiveDepositResult {
+export interface StartInteractiveWithdrawalInput {
+  token: string
+  assetCode: string
+  account: string
+}
+
+export interface StartInteractiveSessionResult {
   /** The anchor's own id for this transaction, used for status polling. */
   id: string
-  /** URL the client opens to complete KYC/payment details with the anchor. */
+  /** URL the client opens to complete KYC/payout details with the anchor. */
   url: string
 }
+
+export type StartInteractiveDepositResult = StartInteractiveSessionResult
 
 /**
  * Client for an anchor's SEP-10 (web auth) + SEP-24 (interactive
@@ -49,6 +65,11 @@ export interface Sep24AnchorClient {
   startInteractiveDeposit(
     input: StartInteractiveDepositInput
   ): Promise<StartInteractiveDepositResult>
+
+  /** Starts an interactive withdrawal session for the given asset/account. */
+  startInteractiveWithdrawal(
+    input: StartInteractiveWithdrawalInput
+  ): Promise<StartInteractiveSessionResult>
 
   /** Fetches the anchor's current view of a transaction's status. */
   fetchTransaction(input: { token: string; id: string }): Promise<Sep24TransactionInfo>
@@ -116,6 +137,26 @@ export class HttpAnchorClient implements Sep24AnchorClient {
     return { id: body.id, url: body.url }
   }
 
+  async startInteractiveWithdrawal(
+    input: StartInteractiveWithdrawalInput
+  ): Promise<StartInteractiveSessionResult> {
+    const response = await fetch(`${this.config.baseUrl}/transactions/withdraw/interactive`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Bearer ${input.token}`,
+      },
+      body: new URLSearchParams({ asset_code: input.assetCode, account: input.account }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Anchor interactive withdrawal request failed (${response.status})`)
+    }
+
+    const body = (await response.json()) as { id: string; url: string }
+    return { id: body.id, url: body.url }
+  }
+
   async fetchTransaction(input: { token: string; id: string }): Promise<Sep24TransactionInfo> {
     const response = await fetch(
       `${this.config.baseUrl}/transaction?id=${encodeURIComponent(input.id)}`,
@@ -127,13 +168,21 @@ export class HttpAnchorClient implements Sep24AnchorClient {
     }
 
     const body = (await response.json()) as {
-      transaction: { status: Sep24TransactionStatus; amount_in?: string; message?: string }
+      transaction: {
+        status: Sep24TransactionStatus
+        amount_in?: string
+        message?: string
+        withdraw_anchor_account?: string
+        withdraw_memo?: string
+      }
     }
 
     return {
       status: body.transaction.status,
       amountIn: body.transaction.amount_in,
       message: body.transaction.message,
+      withdrawAnchorAccount: body.transaction.withdraw_anchor_account,
+      withdrawMemo: body.transaction.withdraw_memo,
     }
   }
 }

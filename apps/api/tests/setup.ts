@@ -77,6 +77,10 @@ vi.mock("../src/shared/anchor/client.js", () => ({
       id: `test-anchor-tx-${Math.random().toString(36).slice(2)}`,
       url: "https://testanchor.stellar.org/sep24/interactive?id=test",
     })),
+    startInteractiveWithdrawal: vi.fn(async () => ({
+      id: `test-anchor-withdraw-tx-${Math.random().toString(36).slice(2)}`,
+      url: "https://testanchor.stellar.org/sep24/interactive?id=test-withdraw",
+    })),
     fetchTransaction: vi.fn(async () => ({ status: "incomplete" as const })),
   },
 }))

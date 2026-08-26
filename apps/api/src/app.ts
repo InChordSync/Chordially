@@ -1,5 +1,6 @@
 import express, { type Express } from "express"
 import { authRouter } from "./modules/auth/routes/auth.routes.js"
+import { creatorPayoutsRouter } from "./modules/creator-payouts/routes/creator-payout.routes.js"
 import { creatorsRouter } from "./modules/creators/routes/creator.routes.js"
 import { reconciliationRouter } from "./modules/reconciliation/routes/reconciliation.routes.js"
 import { streamsRouter } from "./modules/streams/routes/stream.routes.js"
@@ -24,6 +25,7 @@ export function createApp(): Express {
   app.use("/api/wallet", walletRouter)
   app.use("/api/tips", tipsRouter)
   app.use("/api/streams", streamsRouter)
+  app.use("/api/creator-payouts", creatorPayoutsRouter)
   app.use("/api/reconciliation", reconciliationRouter)
   app.use("/api/metrics", metricsRouter)
 
