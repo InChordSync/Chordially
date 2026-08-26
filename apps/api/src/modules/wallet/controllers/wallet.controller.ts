@@ -11,4 +11,14 @@ export const walletController = {
       next(error)
     }
   },
+
+  async establishUsdcTrustline(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.userId!
+      const result = await walletService.establishUsdcTrustline(userId)
+      res.status(200).json(result)
+    } catch (error) {
+      next(error)
+    }
+  },
 }

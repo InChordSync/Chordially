@@ -11,10 +11,12 @@ import {
 } from '@stellar/stellar-sdk'
 import type { StellarPaymentClient } from './interfaces/index.js'
 import type {
+  EstablishTrustlineInput,
   ListPaymentsOptions,
   SponsorAccountCreationInput,
   StellarAccount,
   StellarAccountReference,
+  StellarAssetDescriptor,
   StellarKeypair,
   StellarNetworkConfig,
   StellarPaymentInput,
@@ -22,6 +24,7 @@ import type {
   StellarPaymentResult,
   StellarSplitPaymentInput,
 } from './types/index.js'
+import { NATIVE_ASSET } from './types/index.js'
 
 const NATIVE_ASSET_TYPES = new Set(['native'])
 
@@ -57,6 +60,18 @@ function transactionResultCode(error: unknown): string | undefined {
     | undefined
 
   return data?.extras?.result_codes?.transaction
+}
+
+function toSdkAsset(descriptor: StellarAssetDescriptor = NATIVE_ASSET): Asset {
+  if (descriptor.code === 'native') {
+    return Asset.native()
+  }
+
+  if (!descriptor.issuer) {
+    throw new Error(`issuer is required for asset ${descriptor.code}`)
+  }
+
+  return new Asset(descriptor.code, descriptor.issuer)
 }
 
 function operationResultCodes(error: unknown): string[] {
@@ -95,6 +110,7 @@ export class HorizonStellarClient implements StellarPaymentClient {
       balances: account.balances.map((balance) => ({
         assetType: balance.asset_type,
         assetCode: 'asset_code' in balance ? balance.asset_code : undefined,
+        assetIssuer: 'asset_issuer' in balance ? balance.asset_issuer : undefined,
         balance: balance.balance,
       })),
     }
@@ -135,6 +151,7 @@ export class HorizonStellarClient implements StellarPaymentClient {
       payments: [
         { destinationPublicKey: input.destinationPublicKey, amount: input.amount },
       ],
+      asset: input.asset,
     })
   }
 
@@ -157,11 +174,13 @@ export class HorizonStellarClient implements StellarPaymentClient {
       networkPassphrase: networkPassphrase(this.config.network),
     })
 
+    const asset = toSdkAsset(input.asset)
+
     for (const payment of input.payments) {
       builder.addOperation(
         Operation.payment({
           destination: payment.destinationPublicKey,
-          asset: Asset.native(),
+          asset,
           amount: payment.amount,
         })
       )
@@ -209,6 +228,8 @@ export class HorizonStellarClient implements StellarPaymentClient {
       to: string
       amount: string
       asset_type: string
+      asset_code?: string
+      asset_issuer?: string
       transaction_successful: boolean
       created_at: string
     }
@@ -223,6 +244,8 @@ export class HorizonStellarClient implements StellarPaymentClient {
         to: record.to,
         amount: record.amount,
         assetType: record.asset_type,
+        assetCode: record.asset_code,
+        assetIssuer: record.asset_issuer,
         successful: record.transaction_successful,
         createdAt: record.created_at,
       }))
@@ -281,5 +304,81 @@ export class HorizonStellarClient implements StellarPaymentClient {
   isInsufficientSponsorBalanceError(error: unknown): boolean {
     const operationCodes = operationResultCodes(error)
     return operationCodes.some((code) => INSUFFICIENT_BALANCE_OPERATION_RESULT_CODES.has(code))
+  }
+
+  async establishTrustline(input: EstablishTrustlineInput): Promise<StellarPaymentResult> {
+    const accountKeypair = Keypair.fromSecret(input.accountSecretKey)
+    const asset = toSdkAsset(input.asset)
+
+    if (input.sponsorSecretKey) {
+      const sponsorKeypair = Keypair.fromSecret(input.sponsorSecretKey)
+      const sponsorAccount = await this.server.loadAccount(sponsorKeypair.publicKey())
+
+      const transaction = new TransactionBuilder(sponsorAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: networkPassphrase(this.config.network),
+      })
+        .addOperation(
+          Operation.beginSponsoringFutureReserves({
+            sponsoredId: accountKeypair.publicKey(),
+          })
+        )
+        .addOperation(
+          Operation.changeTrust({ asset, source: accountKeypair.publicKey() })
+        )
+        .addOperation(
+          Operation.endSponsoringFutureReserves({ source: accountKeypair.publicKey() })
+        )
+        .setTimeout(30)
+        .build()
+
+      transaction.sign(sponsorKeypair, accountKeypair)
+
+      const result = await this.server.submitTransaction(transaction)
+      return { hash: result.hash, ledger: result.ledger, successful: result.successful }
+    }
+
+    const account = await this.server.loadAccount(accountKeypair.publicKey())
+    const transaction = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: networkPassphrase(this.config.network),
+    })
+      .addOperation(Operation.changeTrust({ asset }))
+      .setTimeout(30)
+      .build()
+
+    transaction.sign(accountKeypair)
+
+    const result = await this.server.submitTransaction(transaction)
+    return { hash: result.hash, ledger: result.ledger, successful: result.successful }
+  }
+
+  async hasTrustline(
+    reference: StellarAccountReference,
+    asset: StellarAssetDescriptor
+  ): Promise<boolean> {
+    if (asset.code === 'native') {
+      return true
+    }
+
+    const account = await this.getAccount(reference)
+    return account.balances.some(
+      (balance) => balance.assetCode === asset.code && balance.assetIssuer === asset.issuer
+    )
+  }
+
+  async getAssetBalance(
+    reference: StellarAccountReference,
+    asset: StellarAssetDescriptor
+  ): Promise<string> {
+    if (asset.code === 'native') {
+      return this.getNativeBalance(reference)
+    }
+
+    const account = await this.getAccount(reference)
+    const match = account.balances.find(
+      (balance) => balance.assetCode === asset.code && balance.assetIssuer === asset.issuer
+    )
+    return match?.balance ?? '0'
   }
 }

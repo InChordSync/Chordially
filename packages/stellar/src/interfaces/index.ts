@@ -1,8 +1,10 @@
 import type {
+  EstablishTrustlineInput,
   ListPaymentsOptions,
   SponsorAccountCreationInput,
   StellarAccount,
   StellarAccountReference,
+  StellarAssetDescriptor,
   StellarKeypair,
   StellarPaymentInput,
   StellarPaymentRecord,
@@ -78,4 +80,19 @@ export interface StellarPaymentClient {
    * instead of leaving a half-created account.
    */
   isInsufficientSponsorBalanceError(error: unknown): boolean
+
+  /**
+   * Establishes a trustline from an account to an issued asset (e.g. USDC),
+   * required before that account can hold or receive it. When
+   * `sponsorSecretKey` is set, the sponsor covers the trustline's reserve
+   * and the transaction fee, matching how new accounts themselves are
+   * sponsored.
+   */
+  establishTrustline(input: EstablishTrustlineInput): Promise<StellarPaymentResult>
+
+  /** True if the account already trusts the given asset (per its current Horizon balance lines). */
+  hasTrustline(reference: StellarAccountReference, asset: StellarAssetDescriptor): Promise<boolean>
+
+  /** Reads an account's balance in a specific asset. Returns "0" if the account has no trustline (or balance) in it. */
+  getAssetBalance(reference: StellarAccountReference, asset: StellarAssetDescriptor): Promise<string>
 }

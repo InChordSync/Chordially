@@ -3,9 +3,10 @@ import { AppError } from "../../../shared/errors/app-error.js"
 import { logger } from "../../../shared/logger/logger.js"
 import { metrics } from "../../../shared/metrics/metrics.js"
 import { stellarClient } from "../../../shared/stellar/client.js"
+import { toAssetDescriptor } from "../../../shared/stellar/assets.js"
 import { walletRepository } from "../repositories/wallet.repository.js"
-import type { Wallet, WalletMeResponse } from "../types/wallet.types.js"
-import { encryptSecret } from "./wallet-crypto.service.js"
+import type { TrustlineResponse, Wallet, WalletMeResponse } from "../types/wallet.types.js"
+import { decryptSecret, encryptSecret } from "./wallet-crypto.service.js"
 
 /**
  * Provisions the new account on the ledger so it exists and can transact
@@ -114,9 +115,16 @@ export const walletService = {
     }
 
     let balance = "0"
+    let usdcBalance = "0"
 
     try {
       balance = await stellarClient.getNativeBalance({ publicKey: wallet.publicKey })
+      if (wallet.usdcTrustline) {
+        usdcBalance = await stellarClient.getAssetBalance(
+          { publicKey: wallet.publicKey },
+          toAssetDescriptor("USDC")
+        )
+      }
     } catch (error) {
       // The account may not exist on the ledger yet (e.g. Friendbot funding
       // failed or hasn't landed). Report a zero balance rather than erroring.
@@ -125,6 +133,64 @@ export const walletService = {
       }
     }
 
-    return { publicKey: wallet.publicKey, balance, network: wallet.network }
+    return {
+      publicKey: wallet.publicKey,
+      balance,
+      network: wallet.network,
+      usdcTrustline: wallet.usdcTrustline,
+      usdcBalance,
+    }
+  },
+
+  /**
+   * Establishes a USDC trustline for the caller's wallet, sponsored by the
+   * platform (same sponsor used for account creation — see
+   * provisionAccountOnLedger) so the fan/creator never needs to hold XLM to
+   * cover the trustline's reserve. Required before a USDC-denominated tip
+   * can be sent to or received by this wallet.
+   */
+  async establishUsdcTrustline(userId: string): Promise<TrustlineResponse> {
+    const wallet = await walletRepository.findByUserId(userId)
+
+    if (!wallet) {
+      throw new AppError(404, "WALLET_NOT_FOUND", "No wallet exists for this user")
+    }
+
+    if (wallet.usdcTrustline) {
+      return { usdcTrustline: true }
+    }
+
+    const secretKey = await decryptSecret(wallet)
+
+    try {
+      await stellarClient.establishTrustline({
+        accountSecretKey: secretKey,
+        asset: toAssetDescriptor("USDC"),
+        sponsorSecretKey: env.STELLAR_SPONSOR_SECRET_KEY || undefined,
+      })
+    } catch (error) {
+      if (stellarClient.isInsufficientSponsorBalanceError(error)) {
+        throw new AppError(
+          503,
+          "SPONSOR_ACCOUNT_DEPLETED",
+          "Unable to set up USDC right now. Please try again shortly."
+        )
+      }
+
+      logger.error("Establishing USDC trustline failed", {
+        userId,
+        publicKey: wallet.publicKey,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      throw new AppError(
+        502,
+        "TRUSTLINE_ESTABLISHMENT_FAILED",
+        "Unable to set up USDC right now. Please try again shortly."
+      )
+    }
+
+    await walletRepository.markUsdcTrustlineEstablished(userId)
+
+    return { usdcTrustline: true }
   },
 }

@@ -55,6 +55,13 @@ vi.mock("../src/shared/stellar/client.js", async () => {
       })),
       getSponsorBalance: vi.fn(async () => "10000.0000000"),
       isInsufficientSponsorBalanceError: vi.fn(() => false),
+      establishTrustline: vi.fn(async () => ({
+        hash: `test-trustline-hash-${Math.random().toString(36).slice(2)}`,
+        ledger: 1,
+        successful: true,
+      })),
+      hasTrustline: vi.fn(async () => true),
+      getAssetBalance: vi.fn(async () => "0.0000000"),
     },
   }
 })

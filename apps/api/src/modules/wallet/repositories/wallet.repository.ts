@@ -9,4 +9,8 @@ export const walletRepository = {
   create(input: CreateWalletInput): Promise<Wallet> {
     return prisma.wallet.create({ data: input })
   },
+
+  markUsdcTrustlineEstablished(userId: string): Promise<Wallet> {
+    return prisma.wallet.update({ where: { userId }, data: { usdcTrustline: true } })
+  },
 }

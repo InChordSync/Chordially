@@ -15,6 +15,7 @@ export const tipRepository = {
         creatorId: input.creatorId,
         streamId: input.streamId,
         amount: input.amount,
+        asset: input.asset ?? "native",
         idempotencyKey: input.idempotencyKey,
         retriedFromTipId: input.retriedFromTipId,
         status: "pending",

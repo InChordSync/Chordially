@@ -7,6 +7,7 @@ export interface Wallet {
   iv: string
   authTag: string
   network: string
+  usdcTrustline: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -25,4 +26,10 @@ export interface WalletMeResponse {
   publicKey: string
   balance: string
   network: string
+  usdcTrustline: boolean
+  usdcBalance: string
+}
+
+export interface TrustlineResponse {
+  usdcTrustline: boolean
 }

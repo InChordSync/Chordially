@@ -1,3 +1,4 @@
+import type { StellarAssetDescriptor, StellarPaymentRecord } from "@chordially/stellar"
 import { creatorService } from "../../creators/services/creator.service.js"
 import { publishTipEvent } from "../../tips/services/tip.service.js"
 import { tipPayoutRepository } from "../../tips/repositories/tip-payout.repository.js"
@@ -8,6 +9,7 @@ import { env } from "../../../shared/config/env.js"
 import { logger } from "../../../shared/logger/logger.js"
 import { metrics } from "../../../shared/metrics/metrics.js"
 import { stellarClient } from "../../../shared/stellar/client.js"
+import { toAssetDescriptor, type TipAssetCode } from "../../../shared/stellar/assets.js"
 
 export interface ReconciliationSummary {
   scanned: number
@@ -25,6 +27,18 @@ const LOOKBACK_BUFFER_MS = 60_000
 
 function amountsMatch(a: string, b: string): boolean {
   return Math.abs(Number(a) - Number(b)) < AMOUNT_TOLERANCE
+}
+
+/**
+ * A native and an issued asset can share a numeric amount and destination
+ * by coincidence, so matching must check the asset too — otherwise a USDC
+ * tip could be wrongly "confirmed" by an unrelated native payment.
+ */
+function paymentMatchesAsset(payment: StellarPaymentRecord, asset: StellarAssetDescriptor): boolean {
+  if (asset.code === "native") {
+    return payment.assetType === "native"
+  }
+  return payment.assetCode === asset.code && payment.assetIssuer === asset.issuer
 }
 
 interface ExpectedDestination {
@@ -106,13 +120,16 @@ async function reconcileTip(tip: Tip): Promise<ReconcileOutcome> {
     { sinceISOTime: since, limit: 100 }
   )
 
+  const asset = toAssetDescriptor(tip.asset as TipAssetCode)
+
   const matchesPerHash = new Map<string, number>()
   for (const destination of destinations) {
     const match = sentPayments.find(
       (payment) =>
         payment.successful &&
         payment.to === destination.publicKey &&
-        amountsMatch(payment.amount, destination.amount)
+        amountsMatch(payment.amount, destination.amount) &&
+        paymentMatchesAsset(payment, asset)
     )
     if (match) {
       matchesPerHash.set(match.hash, (matchesPerHash.get(match.hash) ?? 0) + 1)

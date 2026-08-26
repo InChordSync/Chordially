@@ -230,6 +230,153 @@ describe('HorizonStellarClient', () => {
     ).rejects.toThrow('at least one payment')
   })
 
+  it('builds a payment operation in a specified issued asset', async () => {
+    const client = new HorizonStellarClient(config)
+    const source = Keypair.random()
+    const destination = Keypair.random().publicKey()
+    const usdcIssuer = Keypair.random().publicKey()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn((client as any).server, 'loadAccount').mockResolvedValue(
+      new Account(source.publicKey(), '1')
+    )
+    const submitSpy = vi
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .spyOn((client as any).server, 'submitTransaction')
+      .mockImplementation((tx: unknown) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const operation = (tx as any).operations[0]
+        expect(operation.asset.code).toBe('USDC')
+        expect(operation.asset.issuer).toBe(usdcIssuer)
+        return Promise.resolve({ hash: 'usdc-hash', ledger: 3, successful: true })
+      })
+
+    await client.submitPayment({
+      sourceSecretKey: source.secret(),
+      destinationPublicKey: destination,
+      amount: '5',
+      asset: { code: 'USDC', issuer: usdcIssuer },
+    })
+
+    expect(submitSpy).toHaveBeenCalledTimes(1)
+  })
+
+  describe('establishTrustline', () => {
+    it('signs with only the account itself when unsponsored', async () => {
+      const client = new HorizonStellarClient(config)
+      const account = Keypair.random()
+      const usdcIssuer = Keypair.random().publicKey()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn((client as any).server, 'loadAccount').mockResolvedValue(
+        new Account(account.publicKey(), '1')
+      )
+      const submitSpy = vi
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .spyOn((client as any).server, 'submitTransaction')
+        .mockImplementation((tx: unknown) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expect((tx as any).operations).toHaveLength(1)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expect((tx as any).operations[0].type).toBe('changeTrust')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expect((tx as any).signatures.length).toBe(1)
+          return Promise.resolve({ hash: 'trust-hash', ledger: 4, successful: true })
+        })
+
+      const result = await client.establishTrustline({
+        accountSecretKey: account.secret(),
+        asset: { code: 'USDC', issuer: usdcIssuer },
+      })
+
+      expect(result).toEqual({ hash: 'trust-hash', ledger: 4, successful: true })
+      expect(submitSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('sponsors the trustline reserve when a sponsor key is given', async () => {
+      const client = new HorizonStellarClient(config)
+      const sponsor = Keypair.random()
+      const account = Keypair.random()
+      const usdcIssuer = Keypair.random().publicKey()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn((client as any).server, 'loadAccount').mockResolvedValue(
+        new Account(sponsor.publicKey(), '1')
+      )
+      const submitSpy = vi
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .spyOn((client as any).server, 'submitTransaction')
+        .mockImplementation((tx: unknown) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expect((tx as any).operations).toHaveLength(3)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expect((tx as any).signatures.length).toBe(2)
+          return Promise.resolve({ hash: 'sponsored-trust-hash', ledger: 5, successful: true })
+        })
+
+      const result = await client.establishTrustline({
+        accountSecretKey: account.secret(),
+        asset: { code: 'USDC', issuer: usdcIssuer },
+        sponsorSecretKey: sponsor.secret(),
+      })
+
+      expect(result).toEqual({ hash: 'sponsored-trust-hash', ledger: 5, successful: true })
+      expect(submitSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('hasTrustline / getAssetBalance', () => {
+    it('is always true/native for the native asset without touching the network', async () => {
+      const client = new HorizonStellarClient(config)
+      const publicKey = Keypair.random().publicKey()
+
+      expect(await client.hasTrustline({ publicKey }, { code: 'native' })).toBe(true)
+    })
+
+    it('reports a trustline as present when a matching balance line exists', async () => {
+      const client = new HorizonStellarClient(config)
+      const publicKey = Keypair.random().publicKey()
+      const usdcIssuer = Keypair.random().publicKey()
+
+      vi.spyOn(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (client as any).server,
+        'loadAccount'
+      ).mockResolvedValue({
+        accountId: () => publicKey,
+        sequence: '1',
+        balances: [
+          { asset_type: 'native', balance: '100.0000000' },
+          { asset_type: 'credit_alphanum4', asset_code: 'USDC', asset_issuer: usdcIssuer, balance: '5.0000000' },
+        ],
+      })
+
+      const asset = { code: 'USDC', issuer: usdcIssuer }
+      expect(await client.hasTrustline({ publicKey }, asset)).toBe(true)
+      expect(await client.getAssetBalance({ publicKey }, asset)).toBe('5.0000000')
+    })
+
+    it('reports no trustline and a zero balance when no matching balance line exists', async () => {
+      const client = new HorizonStellarClient(config)
+      const publicKey = Keypair.random().publicKey()
+      const usdcIssuer = Keypair.random().publicKey()
+
+      vi.spyOn(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (client as any).server,
+        'loadAccount'
+      ).mockResolvedValue({
+        accountId: () => publicKey,
+        sequence: '1',
+        balances: [{ asset_type: 'native', balance: '100.0000000' }],
+      })
+
+      const asset = { code: 'USDC', issuer: usdcIssuer }
+      expect(await client.hasTrustline({ publicKey }, asset)).toBe(false)
+      expect(await client.getAssetBalance({ publicKey }, asset)).toBe('0')
+    })
+  })
+
   describe('sponsorAccountCreation', () => {
     it('sponsors the new account reserve and signs with both keys', async () => {
       const client = new HorizonStellarClient(config)
