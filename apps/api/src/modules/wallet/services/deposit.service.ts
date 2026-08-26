@@ -7,7 +7,7 @@ import { depositRepository } from "../repositories/deposit.repository.js"
 import { walletRepository } from "../repositories/wallet.repository.js"
 import type { WalletDepositResponse } from "../types/deposit.types.js"
 import { toWalletDepositResponse } from "../types/deposit.types.js"
-import { decryptSecret } from "./wallet-crypto.service.js"
+import { decryptSecret, requireCustodialSecrets } from "./wallet-crypto.service.js"
 
 const TERMINAL_STATUSES = new Set(["completed", "error", "expired"])
 
@@ -26,9 +26,10 @@ export const depositService = {
       throw new AppError(404, "WALLET_NOT_FOUND", "No wallet exists for this user")
     }
 
+    const secretKey = await decryptSecret(requireCustodialSecrets(wallet))
+
     let token: string
     try {
-      const secretKey = await decryptSecret(wallet)
       token = await authenticateWithAnchor(anchorClient, wallet.publicKey, secretKey)
     } catch (error) {
       logger.error("Anchor SEP-10 authentication failed", {
@@ -98,7 +99,7 @@ export const depositService = {
     }
 
     try {
-      const secretKey = await decryptSecret(wallet)
+      const secretKey = await decryptSecret(requireCustodialSecrets(wallet))
       const token = await authenticateWithAnchor(anchorClient, wallet.publicKey, secretKey)
       const status = await anchorClient.fetchTransaction({ token, id: deposit.anchorTransactionId })
 

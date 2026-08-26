@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, vi } from "vitest"
 import { prisma } from "../src/shared/database/prisma.js"
+import { AppError } from "../src/shared/errors/app-error.js"
 
 // Wallet creation on signup involves two external services (AWS KMS and the
 // Stellar Friendbot). Tests should never depend on real network access or
@@ -15,6 +16,16 @@ vi.mock("../src/modules/wallet/services/wallet-crypto.service.js", () => ({
   decryptSecret: vi.fn(async (encrypted: { encryptedSecret: string }) =>
     Buffer.from(encrypted.encryptedSecret, "base64").toString("utf8")
   ),
+  requireCustodialSecrets: vi.fn((wallet: { walletType: string; encryptedSecret: string | null }) => {
+    if (wallet.walletType !== "custodial" || wallet.encryptedSecret === null) {
+      throw new AppError(
+        400,
+        "WALLET_NOT_CUSTODIAL",
+        "This operation requires the platform to hold custody of the wallet, and this wallet is linked (self-custodied)"
+      )
+    }
+    return wallet
+  }),
 }))
 
 vi.mock("../src/shared/stellar/client.js", async () => {
@@ -63,6 +74,14 @@ vi.mock("../src/shared/stellar/client.js", async () => {
       hasTrustline: vi.fn(async () => true),
       getAssetBalance: vi.fn(async () => "0.0000000"),
       signTransactionXdr: vi.fn((xdr: string) => `signed:${xdr}`),
+      verifySignature: client.verifySignature.bind(client),
+      buildPaymentTransactionXdr: vi.fn(async () => "test-unsigned-payment-xdr"),
+      buildSplitPaymentTransactionXdr: vi.fn(async () => "test-unsigned-split-payment-xdr"),
+      submitSignedTransactionXdr: vi.fn(async () => ({
+        hash: `test-external-sign-hash-${Math.random().toString(36).slice(2)}`,
+        ledger: 1,
+        successful: true,
+      })),
     },
   }
 })

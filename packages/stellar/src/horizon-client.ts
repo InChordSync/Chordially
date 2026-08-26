@@ -12,6 +12,8 @@ import {
 } from '@stellar/stellar-sdk'
 import type { StellarPaymentClient } from './interfaces/index.js'
 import type {
+  BuildPaymentTransactionInput,
+  BuildSplitPaymentTransactionInput,
   EstablishTrustlineInput,
   ListPaymentsOptions,
   SponsorAccountCreationInput,
@@ -387,5 +389,54 @@ export class HorizonStellarClient implements StellarPaymentClient {
     const transaction = new Transaction(transactionXdr, networkPassphrase(this.config.network))
     transaction.sign(Keypair.fromSecret(secretKey))
     return transaction.toXDR()
+  }
+
+  verifySignature(publicKey: string, message: string, signatureBase64: string): boolean {
+    try {
+      return Keypair.fromPublicKey(publicKey).verify(
+        Buffer.from(message, 'utf8'),
+        Buffer.from(signatureBase64, 'base64')
+      )
+    } catch {
+      return false
+    }
+  }
+
+  async buildPaymentTransactionXdr(input: BuildPaymentTransactionInput): Promise<string> {
+    return this.buildSplitPaymentTransactionXdr({
+      sourcePublicKey: input.sourcePublicKey,
+      payments: [{ destinationPublicKey: input.destinationPublicKey, amount: input.amount }],
+      asset: input.asset,
+    })
+  }
+
+  async buildSplitPaymentTransactionXdr(input: BuildSplitPaymentTransactionInput): Promise<string> {
+    if (input.payments.length === 0) {
+      throw new Error('buildSplitPaymentTransactionXdr requires at least one payment')
+    }
+
+    const sourceAccount = await this.server.loadAccount(input.sourcePublicKey)
+    const asset = toSdkAsset(input.asset)
+
+    const builder = new TransactionBuilder(sourceAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: networkPassphrase(this.config.network),
+    })
+
+    for (const payment of input.payments) {
+      builder.addOperation(
+        Operation.payment({ destination: payment.destinationPublicKey, asset, amount: payment.amount })
+      )
+    }
+
+    // Longer timeout than a server-signed transaction: a linked wallet's
+    // owner needs time to open their extension and sign before this expires.
+    return builder.setTimeout(300).build().toXDR()
+  }
+
+  async submitSignedTransactionXdr(signedTransactionXdr: string): Promise<StellarPaymentResult> {
+    const transaction = new Transaction(signedTransactionXdr, networkPassphrase(this.config.network))
+    const result = await this.server.submitTransaction(transaction)
+    return { hash: result.hash, ledger: result.ledger, successful: result.successful }
   }
 }

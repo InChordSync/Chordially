@@ -88,6 +88,19 @@ export interface EstablishTrustlineInput {
   sponsorSecretKey?: string
 }
 
+export interface BuildPaymentTransactionInput {
+  sourcePublicKey: string
+  destinationPublicKey: string
+  amount: string
+  asset?: StellarAssetDescriptor
+}
+
+export interface BuildSplitPaymentTransactionInput {
+  sourcePublicKey: string
+  payments: StellarSplitPaymentDestination[]
+  asset?: StellarAssetDescriptor
+}
+
 export interface ListPaymentsOptions {
   /** Only return payments recorded at or after this ISO-8601 time. */
   sinceISOTime?: string

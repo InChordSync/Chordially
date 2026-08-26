@@ -60,10 +60,15 @@ model Wallet {
   userId           String   @unique
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   publicKey        String   @unique
-  encryptedSecret  String
-  encryptedDataKey String
-  iv               String
-  authTag          String
+  // "custodial" (the platform holds the secret key, encrypted below) or
+  // "linked" (an external wallet the user controls themselves — the four
+  // encrypted* fields are null and every field below stays null forever).
+  // Guard any decryptSecret() call site on this before assuming custodial.
+  walletType       String   @default("custodial")
+  encryptedSecret  String?
+  encryptedDataKey String?
+  iv               String?
+  authTag          String?
   network          String   @default("testnet")
   // Whether this wallet has an established USDC trustline on the ledger.
   // Checked before a USDC tip is submitted so a missing trustline fails
@@ -89,7 +94,14 @@ model Tip {
   // "native" (XLM) or an issued asset code (e.g. "USDC"). Applies to the
   // whole tip, including every payout of a split tip.
   asset          String    @default("native")
+  // pending -> submitted -> confirmed|failed for a custodial fan wallet.
+  // A linked fan wallet instead goes pending -> awaiting_signature (see
+  // unsignedTransactionXdr) -> confirmed|failed once the fan submits their
+  // own signature via POST /api/tips/:id/submit-signed.
   status         String    @default("pending")
+  // Set only while status = "awaiting_signature": the transaction the fan's
+  // linked wallet needs to sign externally to complete this tip.
+  unsignedTransactionXdr String?
   txHash         String?
   failureReason  String?
   attempts       Int       @default(0)

@@ -43,6 +43,24 @@ export const tipController = {
     }
   },
 
+  async submitSigned(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const fanUserId = req.userId!
+      const { id } = req.params
+      const { signedTransactionXdr } = req.body as { signedTransactionXdr?: unknown }
+
+      if (typeof signedTransactionXdr !== "string" || signedTransactionXdr.length === 0) {
+        throw new AppError(400, "VALIDATION_ERROR", "signedTransactionXdr is required")
+      }
+
+      const tip = await tipService.submitSignedTip(id!, fanUserId, signedTransactionXdr)
+
+      res.status(200).json(tip)
+    } catch (error) {
+      next(error)
+    }
+  },
+
   async retry(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const fanUserId = req.userId!

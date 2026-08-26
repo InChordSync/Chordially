@@ -5,8 +5,14 @@ import { metrics } from "../../../shared/metrics/metrics.js"
 import { stellarClient } from "../../../shared/stellar/client.js"
 import { toAssetDescriptor } from "../../../shared/stellar/assets.js"
 import { walletRepository } from "../repositories/wallet.repository.js"
-import type { TrustlineResponse, Wallet, WalletMeResponse } from "../types/wallet.types.js"
-import { decryptSecret, encryptSecret } from "./wallet-crypto.service.js"
+import type {
+  TrustlineResponse,
+  Wallet,
+  WalletMeResponse,
+  WalletType,
+} from "../types/wallet.types.js"
+import { verifyWalletLinkChallenge } from "../../../shared/wallet-link/challenge.js"
+import { decryptSecret, encryptSecret, requireCustodialSecrets } from "./wallet-crypto.service.js"
 
 /**
  * Provisions the new account on the ledger so it exists and can transact
@@ -107,6 +113,50 @@ export const walletService = {
     return wallet
   },
 
+  /**
+   * Registers a linked (non-custodial) wallet: the platform stores only the
+   * public key it was given — the caller must have already proven control
+   * of it via a signed link challenge (see shared/wallet-link/challenge.js)
+   * before this is called. No sponsorship or funding happens here: a linked
+   * wallet is assumed to already exist and be funded, since we hold no
+   * secret to co-sign a sponsored account-creation transaction with.
+   */
+  /**
+   * Validates a wallet-link proof and target public key without writing
+   * anything — lets a caller (e.g. registration) fail fast before creating
+   * any other rows, rather than discovering an invalid proof only after a
+   * user account already exists.
+   */
+  async assertLinkableWallet(publicKey: string, challenge: string, signature: string): Promise<void> {
+    if (!verifyWalletLinkChallenge(challenge, publicKey, signature)) {
+      throw new AppError(
+        400,
+        "INVALID_LINK_PROOF",
+        "Could not verify control of this Stellar account. The challenge may be expired or the signature invalid."
+      )
+    }
+
+    const existing = await walletRepository.findByPublicKey(publicKey)
+    if (existing) {
+      throw new AppError(
+        409,
+        "WALLET_ALREADY_LINKED",
+        "This Stellar account is already linked to another user"
+      )
+    }
+  },
+
+  async linkWallet(
+    userId: string,
+    publicKey: string,
+    challenge: string,
+    signature: string
+  ): Promise<Wallet> {
+    await this.assertLinkableWallet(publicKey, challenge, signature)
+
+    return walletRepository.createLinked({ userId, publicKey, network: env.STELLAR_NETWORK })
+  },
+
   async getWalletForUser(userId: string): Promise<WalletMeResponse> {
     const wallet = await walletRepository.findByUserId(userId)
 
@@ -137,6 +187,7 @@ export const walletService = {
       publicKey: wallet.publicKey,
       balance,
       network: wallet.network,
+      walletType: wallet.walletType as WalletType,
       usdcTrustline: wallet.usdcTrustline,
       usdcBalance,
     }
@@ -160,7 +211,7 @@ export const walletService = {
       return { usdcTrustline: true }
     }
 
-    const secretKey = await decryptSecret(wallet)
+    const secretKey = await decryptSecret(requireCustodialSecrets(wallet))
 
     try {
       await stellarClient.establishTrustline({
