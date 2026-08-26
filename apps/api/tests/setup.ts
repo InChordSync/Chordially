@@ -48,6 +48,13 @@ vi.mock("../src/shared/stellar/client.js", async () => {
       })),
       isTransientSubmissionError: client.isTransientSubmissionError.bind(client),
       listSentPayments: vi.fn(async () => []),
+      sponsorAccountCreation: vi.fn(async () => ({
+        hash: `test-sponsor-hash-${Math.random().toString(36).slice(2)}`,
+        ledger: 1,
+        successful: true,
+      })),
+      getSponsorBalance: vi.fn(async () => "10000.0000000"),
+      isInsufficientSponsorBalanceError: vi.fn(() => false),
     },
   }
 })

@@ -230,6 +230,121 @@ describe('HorizonStellarClient', () => {
     ).rejects.toThrow('at least one payment')
   })
 
+  describe('sponsorAccountCreation', () => {
+    it('sponsors the new account reserve and signs with both keys', async () => {
+      const client = new HorizonStellarClient(config)
+      const sponsor = Keypair.random()
+      const newAccount = Keypair.random()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn((client as any).server, 'loadAccount').mockResolvedValue(
+        new Account(sponsor.publicKey(), '1')
+      )
+      const submitSpy = vi
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .spyOn((client as any).server, 'submitTransaction')
+        .mockImplementation((tx: unknown) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const operations = (tx as any).operations
+          expect(operations).toHaveLength(3)
+          expect(operations[0].type).toBe('beginSponsoringFutureReserves')
+          expect(operations[1].type).toBe('createAccount')
+          expect(operations[1].startingBalance).toBe('0.0000000')
+          expect(operations[2].type).toBe('endSponsoringFutureReserves')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expect((tx as any).signatures.length).toBe(2)
+          return Promise.resolve({ hash: 'sponsor-hash', ledger: 7, successful: true })
+        })
+
+      const result = await client.sponsorAccountCreation({
+        sponsorSecretKey: sponsor.secret(),
+        newAccountPublicKey: newAccount.publicKey(),
+        newAccountSecretKey: newAccount.secret(),
+      })
+
+      expect(result).toEqual({ hash: 'sponsor-hash', ledger: 7, successful: true })
+      expect(submitSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects a mismatched new-account keypair', async () => {
+      const client = new HorizonStellarClient(config)
+      const sponsor = Keypair.random()
+      const newAccount = Keypair.random()
+      const otherAccount = Keypair.random()
+
+      await expect(
+        client.sponsorAccountCreation({
+          sponsorSecretKey: sponsor.secret(),
+          newAccountPublicKey: otherAccount.publicKey(),
+          newAccountSecretKey: newAccount.secret(),
+        })
+      ).rejects.toThrow('does not match')
+    })
+  })
+
+  describe('getSponsorBalance', () => {
+    it('reads the sponsor account native balance', async () => {
+      const client = new HorizonStellarClient(config)
+      const publicKey = Keypair.random().publicKey()
+
+      vi.spyOn(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (client as any).server,
+        'loadAccount'
+      ).mockResolvedValue({
+        accountId: () => publicKey,
+        sequence: '1',
+        balances: [{ asset_type: 'native', balance: '5000.0000000' }],
+      })
+
+      const balance = await client.getSponsorBalance(publicKey)
+      expect(balance).toBe('5000.0000000')
+    })
+  })
+
+  describe('isInsufficientSponsorBalanceError', () => {
+    it('recognizes op_underfunded as an insufficient-balance failure', () => {
+      const client = new HorizonStellarClient(config)
+      const error = new NetworkError('failed', {
+        data: {
+          extras: {
+            result_codes: { transaction: 'tx_failed', operations: ['op_underfunded'] },
+          },
+        },
+      })
+      expect(client.isInsufficientSponsorBalanceError(error)).toBe(true)
+    })
+
+    it('recognizes op_low_reserve as an insufficient-balance failure', () => {
+      const client = new HorizonStellarClient(config)
+      const error = new NetworkError('failed', {
+        data: {
+          extras: {
+            result_codes: { transaction: 'tx_failed', operations: ['op_low_reserve'] },
+          },
+        },
+      })
+      expect(client.isInsufficientSponsorBalanceError(error)).toBe(true)
+    })
+
+    it('does not treat an unrelated operation failure as insufficient balance', () => {
+      const client = new HorizonStellarClient(config)
+      const error = new NetworkError('failed', {
+        data: {
+          extras: {
+            result_codes: { transaction: 'tx_failed', operations: ['op_no_destination'] },
+          },
+        },
+      })
+      expect(client.isInsufficientSponsorBalanceError(error)).toBe(false)
+    })
+
+    it('returns false for a plain error', () => {
+      const client = new HorizonStellarClient(config)
+      expect(client.isInsufficientSponsorBalanceError(new Error('boom'))).toBe(false)
+    })
+  })
+
   describe('isTransientSubmissionError', () => {
     const client = new HorizonStellarClient(config)
 
