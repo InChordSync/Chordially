@@ -37,6 +37,7 @@ model CreatorProfile {
   streams      Stream[]
   payoutShares StreamPayoutConfigPayee[]
   tipPayouts   TipPayout[]
+  payouts      CreatorPayout[]
 }
 
 model FanProfile {
@@ -162,6 +163,32 @@ model TipPayout {
   failureReason String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// A creator's cash-out of accumulated on-chain tips to fiat via a SEP-24
+// anchor withdrawal. Kept entirely separate from Tip/TipPayout — this has
+// its own idempotency and state machine because a payout that fails
+// between "submitted on-chain" and "anchor confirmed receipt" is a
+// real-money discrepancy, not a retryable UX-level failure.
+model CreatorPayout {
+  id                  String   @id @default(cuid())
+  idempotencyKey      String
+  creatorId           String
+  creator             CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  assetCode           String
+  amount              String
+  // awaiting_anchor_details -> submitted -> completed | failed
+  status              String   @default("awaiting_anchor_details")
+  anchorTransactionId String
+  interactiveUrl      String
+  txHash              String?
+  failureReason       String?
+  attempts            Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([creatorId, idempotencyKey])
+  @@index([creatorId])
 }
 
 // A fan's fiat-to-Stellar deposit via a SEP-24 anchor, kept as its own

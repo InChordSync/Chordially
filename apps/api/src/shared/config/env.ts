@@ -38,6 +38,10 @@ const envSchema = z.object({
   // per environment: a testnet reference anchor locally, a licensed anchor
   // in production.
   ANCHOR_BASE_URL: z.string().default("https://testanchor.stellar.org/sep24"),
+  // Minimum amount a creator can cash out in one payout, to keep payouts
+  // from being smaller than the anchor's own fiat-settlement fees are
+  // likely to be.
+  CREATOR_PAYOUT_MINIMUM_AMOUNT: z.coerce.number().positive().default(10),
   TIP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10_000),
   TIP_RATE_LIMIT_PER_FAN: z.coerce.number().int().positive().default(5),
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),
