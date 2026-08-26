@@ -7,6 +7,7 @@ import {
   Networks,
   NotFoundError,
   Operation,
+  Transaction,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
 import type { StellarPaymentClient } from './interfaces/index.js'
@@ -380,5 +381,11 @@ export class HorizonStellarClient implements StellarPaymentClient {
       (balance) => balance.assetCode === asset.code && balance.assetIssuer === asset.issuer
     )
     return match?.balance ?? '0'
+  }
+
+  signTransactionXdr(transactionXdr: string, secretKey: string): string {
+    const transaction = new Transaction(transactionXdr, networkPassphrase(this.config.network))
+    transaction.sign(Keypair.fromSecret(secretKey))
+    return transaction.toXDR()
   }
 }

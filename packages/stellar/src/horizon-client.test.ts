@@ -1,4 +1,13 @@
-import { Account, Keypair, NetworkError } from '@stellar/stellar-sdk'
+import {
+  Account,
+  BASE_FEE,
+  Keypair,
+  NetworkError,
+  Networks,
+  Operation,
+  Transaction,
+  TransactionBuilder,
+} from '@stellar/stellar-sdk'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HorizonStellarClient } from './horizon-client.js'
 
@@ -374,6 +383,27 @@ describe('HorizonStellarClient', () => {
       const asset = { code: 'USDC', issuer: usdcIssuer }
       expect(await client.hasTrustline({ publicKey }, asset)).toBe(false)
       expect(await client.getAssetBalance({ publicKey }, asset)).toBe('0')
+    })
+  })
+
+  describe('signTransactionXdr', () => {
+    it('signs an externally-built transaction envelope with the given secret key', () => {
+      const client = new HorizonStellarClient(config)
+      const signer = Keypair.random()
+      const source = Keypair.random()
+
+      const unsigned = new TransactionBuilder(new Account(source.publicKey(), '1'), {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(Operation.manageData({ name: 'test', value: 'value', source: signer.publicKey() }))
+        .setTimeout(30)
+        .build()
+
+      const signedXdr = client.signTransactionXdr(unsigned.toXDR(), signer.secret())
+      const signedTransaction = new Transaction(signedXdr, Networks.TESTNET)
+
+      expect(signedTransaction.signatures).toHaveLength(1)
     })
   })
 
