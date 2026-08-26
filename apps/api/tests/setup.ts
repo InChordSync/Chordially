@@ -62,9 +62,24 @@ vi.mock("../src/shared/stellar/client.js", async () => {
       })),
       hasTrustline: vi.fn(async () => true),
       getAssetBalance: vi.fn(async () => "0.0000000"),
+      signTransactionXdr: vi.fn((xdr: string) => `signed:${xdr}`),
     },
   }
 })
+
+// The fiat on-ramp talks to an external SEP-10/24 anchor over HTTP; tests
+// get a fake anchor instead so they never depend on real network access.
+vi.mock("../src/shared/anchor/client.js", () => ({
+  anchorClient: {
+    requestChallenge: vi.fn(async () => ({ transactionXdr: "test-challenge-xdr" })),
+    submitChallenge: vi.fn(async () => ({ token: "test-anchor-token" })),
+    startInteractiveDeposit: vi.fn(async () => ({
+      id: `test-anchor-tx-${Math.random().toString(36).slice(2)}`,
+      url: "https://testanchor.stellar.org/sep24/interactive?id=test",
+    })),
+    fetchTransaction: vi.fn(async () => ({ status: "incomplete" as const })),
+  },
+}))
 
 beforeEach(async () => {
   await prisma.user.deleteMany()

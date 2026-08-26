@@ -17,6 +17,7 @@ model User {
   fanProfile     FanProfile?
   wallet         Wallet?
   tipsSent       Tip[]
+  walletDeposits WalletDeposit[]
 }
 
 model CreatorProfile {
@@ -161,4 +162,25 @@ model TipPayout {
   failureReason String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// A fan's fiat-to-Stellar deposit via a SEP-24 anchor, kept as its own
+// audit trail distinct from Tip since this is platform money movement
+// (real fiat rails), not a tip. Status mirrors SEP-24's own transaction
+// state machine (see shared/anchor/sep24-client.ts) rather than inventing a
+// parallel one, so it stays legible against the anchor's own dashboard/logs.
+model WalletDeposit {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetCode           String
+  anchorTransactionId String
+  interactiveUrl      String
+  status              String   @default("incomplete")
+  amountIn            String?
+  failureReason       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId])
 }

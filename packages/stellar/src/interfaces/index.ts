@@ -95,4 +95,12 @@ export interface StellarPaymentClient {
 
   /** Reads an account's balance in a specific asset. Returns "0" if the account has no trustline (or balance) in it. */
   getAssetBalance(reference: StellarAccountReference, asset: StellarAssetDescriptor): Promise<string>
+
+  /**
+   * Signs an arbitrary base64 transaction envelope XDR with the given
+   * secret key and returns the signed envelope, base64-encoded. Used for
+   * SEP-10 web-auth challenges, which arrive as XDR the anchor hands us to
+   * sign, not as a transaction we build ourselves.
+   */
+  signTransactionXdr(transactionXdr: string, secretKey: string): string
 }

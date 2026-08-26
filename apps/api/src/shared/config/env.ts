@@ -34,6 +34,10 @@ const envSchema = z.object({
   STELLAR_USDC_ISSUER: z
     .string()
     .default("GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"),
+  // Base URL of the SEP-10/SEP-24 anchor used for fiat deposits. Swappable
+  // per environment: a testnet reference anchor locally, a licensed anchor
+  // in production.
+  ANCHOR_BASE_URL: z.string().default("https://testanchor.stellar.org/sep24"),
   TIP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10_000),
   TIP_RATE_LIMIT_PER_FAN: z.coerce.number().int().positive().default(5),
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),
