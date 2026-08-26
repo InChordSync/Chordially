@@ -28,6 +28,12 @@ const envSchema = z.object({
   // Sponsor balance (in XLM) below which a low-balance warning is logged
   // and recorded as a metric on every wallet creation.
   STELLAR_SPONSOR_LOW_BALANCE_XLM: z.coerce.number().positive().default(50),
+  // Issuer of the USDC asset tips/wallets can opt into alongside native
+  // XLM. Defaults to Circle's official testnet USDC issuer, matching
+  // STELLAR_NETWORK's own testnet default.
+  STELLAR_USDC_ISSUER: z
+    .string()
+    .default("GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"),
   TIP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10_000),
   TIP_RATE_LIMIT_PER_FAN: z.coerce.number().int().positive().default(5),
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),

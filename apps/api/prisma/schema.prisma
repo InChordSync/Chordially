@@ -63,6 +63,10 @@ model Wallet {
   iv               String
   authTag          String
   network          String   @default("testnet")
+  // Whether this wallet has an established USDC trustline on the ledger.
+  // Checked before a USDC tip is submitted so a missing trustline fails
+  // fast with a clear error instead of a generic Horizon submission error.
+  usdcTrustline    Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -80,6 +84,9 @@ model Tip {
   streamId       String?
   stream         Stream?   @relation(fields: [streamId], references: [id], onDelete: SetNull)
   amount         String
+  // "native" (XLM) or an issued asset code (e.g. "USDC"). Applies to the
+  // whole tip, including every payout of a split tip.
+  asset          String    @default("native")
   status         String    @default("pending")
   txHash         String?
   failureReason  String?

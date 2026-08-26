@@ -240,6 +240,46 @@ describe("reconciliationService.run", () => {
     expect(reconciled.failureReason).toContain("reconciliation")
   })
 
+  it("does not confirm a native tip using a same-amount USDC payment to the same destination", async () => {
+    const fan = await registerAndLogin("recon-asset-fan@test.com")
+    const { creator, wallet: creatorWallet } = await createCreatorWithWallet(
+      "recon-asset-creator@test.com",
+      "recon-asset"
+    )
+    const fanWallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: fan.userId } })
+
+    const tip = await createStuckTip({
+      fanUserId: fan.userId,
+      creatorId: creator.id,
+      amount: "10",
+      ageMs: 65_000, // stuck, but not yet past the dead-letter threshold
+    })
+
+    // Same destination, same numeric amount, but a USDC payment — must not
+    // be mistaken for the native-XLM tip's confirmation.
+    vi.mocked(stellarClient.listSentPayments).mockResolvedValueOnce([
+      {
+        hash: "wrong-asset-hash",
+        from: fanWallet.publicKey,
+        to: creatorWallet.publicKey,
+        amount: "10.0000000",
+        assetType: "credit_alphanum4",
+        assetCode: "USDC",
+        assetIssuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+        successful: true,
+        createdAt: new Date().toISOString(),
+      },
+    ])
+
+    const summary = await reconciliationService.run()
+
+    expect(summary.confirmed).toBe(0)
+    expect(summary.stillPending).toBe(1)
+
+    const reconciled = await prisma.tip.findUniqueOrThrow({ where: { id: tip.id } })
+    expect(reconciled.status).toBe("submitted")
+  })
+
   it("leaves a stuck tip pending when not yet past the dead-letter threshold and nothing matches", async () => {
     const fan = await registerAndLogin("recon-pending-fan@test.com")
     const { creator } = await createCreatorWithWallet("recon-pending-creator@test.com", "recon-pending")
