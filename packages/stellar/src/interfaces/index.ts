@@ -1,5 +1,6 @@
 import type {
   ListPaymentsOptions,
+  SponsorAccountCreationInput,
   StellarAccount,
   StellarAccountReference,
   StellarKeypair,
@@ -57,4 +58,24 @@ export interface StellarPaymentClient {
     reference: StellarAccountReference,
     options?: ListPaymentsOptions
   ): Promise<StellarPaymentRecord[]>
+
+  /**
+   * Creates a new account on the ledger sponsored by the platform's sponsor
+   * account: the sponsor pays the new account's base reserve and the
+   * transaction fee, so the new user never needs to hold XLM before their
+   * first transaction. Works on any network, unlike `fundTestnetAccount`.
+   */
+  sponsorAccountCreation(input: SponsorAccountCreationInput): Promise<StellarPaymentResult>
+
+  /** Convenience helper returning the sponsor account's native XLM balance, for low-balance monitoring. */
+  getSponsorBalance(sponsorPublicKey: string): Promise<string>
+
+  /**
+   * True if a sponsorship/account-creation failure happened because the
+   * sponsor account itself doesn't have enough XLM to cover the new
+   * account's reserve. Distinguishes "we're out of runway" from any other
+   * submission failure, so callers can fail loudly with a specific error
+   * instead of leaving a half-created account.
+   */
+  isInsufficientSponsorBalanceError(error: unknown): boolean
 }

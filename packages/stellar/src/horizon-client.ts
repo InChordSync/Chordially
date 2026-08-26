@@ -12,6 +12,7 @@ import {
 import type { StellarPaymentClient } from './interfaces/index.js'
 import type {
   ListPaymentsOptions,
+  SponsorAccountCreationInput,
   StellarAccount,
   StellarAccountReference,
   StellarKeypair,
@@ -33,6 +34,14 @@ const TRANSIENT_TRANSACTION_RESULT_CODES = new Set([
   'tx_insufficient_fee',
 ])
 
+// Horizon reports an underfunded source account as a per-operation result
+// code (op_underfunded / op_low_reserve) inside a tx_failed envelope, not as
+// its own transaction-level result code.
+const INSUFFICIENT_BALANCE_OPERATION_RESULT_CODES = new Set([
+  'op_underfunded',
+  'op_low_reserve',
+])
+
 function networkPassphrase(network: StellarNetworkConfig['network']): string {
   return network === 'public' ? Networks.PUBLIC : Networks.TESTNET
 }
@@ -48,6 +57,19 @@ function transactionResultCode(error: unknown): string | undefined {
     | undefined
 
   return data?.extras?.result_codes?.transaction
+}
+
+function operationResultCodes(error: unknown): string[] {
+  if (!(error instanceof Error)) {
+    return []
+  }
+
+  const response = (error as { response?: { data?: unknown } }).response
+  const data = response?.data as
+    | { extras?: { result_codes?: { operations?: string[] } } }
+    | undefined
+
+  return data?.extras?.result_codes?.operations ?? []
 }
 
 export class HorizonStellarClient implements StellarPaymentClient {
@@ -204,5 +226,60 @@ export class HorizonStellarClient implements StellarPaymentClient {
         successful: record.transaction_successful,
         createdAt: record.created_at,
       }))
+  }
+
+  async sponsorAccountCreation(input: SponsorAccountCreationInput): Promise<StellarPaymentResult> {
+    const sponsorKeypair = Keypair.fromSecret(input.sponsorSecretKey)
+    const newAccountKeypair = Keypair.fromSecret(input.newAccountSecretKey)
+
+    if (newAccountKeypair.publicKey() !== input.newAccountPublicKey) {
+      throw new Error('newAccountSecretKey does not match newAccountPublicKey')
+    }
+
+    const sponsorAccount = await this.server.loadAccount(sponsorKeypair.publicKey())
+
+    // Standard sponsored-account-creation shape: the sponsor declares it will
+    // cover the new account's reserves, the account is created with a
+    // starting balance of 0 XLM (the sponsor's reserve covers it instead),
+    // and the new account itself closes out the sponsorship window. The
+    // sponsor is the transaction source, so it also pays the network fee —
+    // the new user never spends or holds XLM to get their account created.
+    const transaction = new TransactionBuilder(sponsorAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: networkPassphrase(this.config.network),
+    })
+      .addOperation(
+        Operation.beginSponsoringFutureReserves({
+          sponsoredId: input.newAccountPublicKey,
+        })
+      )
+      .addOperation(
+        Operation.createAccount({
+          destination: input.newAccountPublicKey,
+          startingBalance: '0',
+        })
+      )
+      .addOperation(
+        Operation.endSponsoringFutureReserves({
+          source: input.newAccountPublicKey,
+        })
+      )
+      .setTimeout(30)
+      .build()
+
+    transaction.sign(sponsorKeypair, newAccountKeypair)
+
+    const result = await this.server.submitTransaction(transaction)
+
+    return { hash: result.hash, ledger: result.ledger, successful: result.successful }
+  }
+
+  async getSponsorBalance(sponsorPublicKey: string): Promise<string> {
+    return this.getNativeBalance({ publicKey: sponsorPublicKey })
+  }
+
+  isInsufficientSponsorBalanceError(error: unknown): boolean {
+    const operationCodes = operationResultCodes(error)
+    return operationCodes.some((code) => INSUFFICIENT_BALANCE_OPERATION_RESULT_CODES.has(code))
   }
 }

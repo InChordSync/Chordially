@@ -67,3 +67,12 @@ export interface ListPaymentsOptions {
   /** Defaults to 50. */
   limit?: number
 }
+
+export interface SponsorAccountCreationInput {
+  /** Secret key of the platform's sponsor account, which pays the new account's base reserve and the transaction fee. */
+  sponsorSecretKey: string
+  /** Public key of the new account being created. */
+  newAccountPublicKey: string
+  /** Secret key of the new account; required to co-sign acceptance of the sponsorship. */
+  newAccountSecretKey: string
+}

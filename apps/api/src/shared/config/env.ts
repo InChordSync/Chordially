@@ -16,6 +16,18 @@ const envSchema = z.object({
   STELLAR_NETWORK: z.enum(["testnet", "public"]).default("testnet"),
   STELLAR_HORIZON_URL: z.string().default("https://horizon-testnet.stellar.org"),
   STELLAR_FRIENDBOT_URL: z.string().default("https://friendbot.stellar.org"),
+  // Secret key of the platform's sponsor account, which funds new users'
+  // base reserves so they never need to hold XLM before their first
+  // transaction. When unset, wallet creation falls back to Friendbot, which
+  // only works on testnet — intended for local development only.
+  STELLAR_SPONSOR_SECRET_KEY: z.string().default(""),
+  // Public key half of STELLAR_SPONSOR_SECRET_KEY, kept as its own variable
+  // so nothing outside `packages/stellar` ever needs to derive a public key
+  // from a secret (and apps/api never needs a direct stellar-sdk dependency).
+  STELLAR_SPONSOR_PUBLIC_KEY: z.string().default(""),
+  // Sponsor balance (in XLM) below which a low-balance warning is logged
+  // and recorded as a metric on every wallet creation.
+  STELLAR_SPONSOR_LOW_BALANCE_XLM: z.coerce.number().positive().default(50),
   TIP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10_000),
   TIP_RATE_LIMIT_PER_FAN: z.coerce.number().int().positive().default(5),
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),
