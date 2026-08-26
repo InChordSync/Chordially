@@ -1,4 +1,6 @@
 import type {
+  BuildPaymentTransactionInput,
+  BuildSplitPaymentTransactionInput,
   EstablishTrustlineInput,
   ListPaymentsOptions,
   SponsorAccountCreationInput,
@@ -103,4 +105,21 @@ export interface StellarPaymentClient {
    * sign, not as a transaction we build ourselves.
    */
   signTransactionXdr(transactionXdr: string, secretKey: string): string
+
+  /** Verifies that `signatureBase64` is a valid signature of `message` by `publicKey`. Used to prove control of a linked (non-custodial) wallet without ever holding its secret key. */
+  verifySignature(publicKey: string, message: string, signatureBase64: string): boolean
+
+  /**
+   * Builds (but does not sign) a native/issued-asset payment transaction
+   * from `sourcePublicKey`, for a linked wallet to sign externally — the
+   * platform never holds a linked wallet's secret key, so it can prepare
+   * the transaction but can't complete it.
+   */
+  buildPaymentTransactionXdr(input: BuildPaymentTransactionInput): Promise<string>
+
+  /** Split-payment counterpart to buildPaymentTransactionXdr. */
+  buildSplitPaymentTransactionXdr(input: BuildSplitPaymentTransactionInput): Promise<string>
+
+  /** Submits a transaction that was built by this client and signed externally (see buildPaymentTransactionXdr). */
+  submitSignedTransactionXdr(signedTransactionXdr: string): Promise<StellarPaymentResult>
 }

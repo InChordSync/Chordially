@@ -5,7 +5,7 @@ import { splitAmount } from "../../streams/services/payout-split.util.js"
 import { streamPayoutConfigService } from "../../streams/services/stream-payout-config.service.js"
 import { streamService } from "../../streams/services/stream.service.js"
 import { walletRepository } from "../../wallet/repositories/wallet.repository.js"
-import { decryptSecret } from "../../wallet/services/wallet-crypto.service.js"
+import { decryptSecret, requireCustodialSecrets } from "../../wallet/services/wallet-crypto.service.js"
 import { AppError } from "../../../shared/errors/app-error.js"
 import { logger } from "../../../shared/logger/logger.js"
 import { metrics } from "../../../shared/metrics/metrics.js"
@@ -186,6 +186,37 @@ async function submitToStellar(tip: Tip, initialPayouts: TipPayout[]): Promise<T
 
   const destinations =
     resolvedDestinations && resolvedDestinations.ok ? resolvedDestinations.destinations : null
+  const asset = toAssetDescriptor(assetCode)
+
+  if (fanWallet.walletType === "linked") {
+    // A linked wallet has no secret we can decrypt and sign with — the fan
+    // must sign externally. Split tips aren't supported here yet (tracked
+    // as a follow-up): resolving which of several split-payment failure
+    // states to surface to an external signer adds real complexity that's
+    // out of scope for this pass.
+    if (isSplit) {
+      return fail("Split tips are not yet supported for linked wallets")
+    }
+
+    let unsignedTransactionXdr: string
+    try {
+      unsignedTransactionXdr = await stellarClient.buildPaymentTransactionXdr({
+        sourcePublicKey: fanWallet.publicKey,
+        destinationPublicKey: singleWallet!.publicKey,
+        amount: tip.amount,
+        asset,
+      })
+    } catch (error) {
+      return fail(errorMessage(error))
+    }
+
+    const awaitingSignature = await tipRepository.markAwaitingSignature(
+      tip.id,
+      unsignedTransactionXdr
+    )
+    publishTipEvent(awaitingSignature, [])
+    return awaitingSignature
+  }
 
   await transition(
     tip,
@@ -194,8 +225,7 @@ async function submitToStellar(tip: Tip, initialPayouts: TipPayout[]): Promise<T
     () => tipPayoutRepository.updateStatusForTip(tip.id, "submitted")
   )
 
-  const sourceSecretKey = await decryptSecret(fanWallet)
-  const asset = toAssetDescriptor(assetCode)
+  const sourceSecretKey = await decryptSecret(requireCustodialSecrets(fanWallet))
 
   let attempts = tip.attempts
   let lastError: unknown
@@ -328,6 +358,45 @@ export const tipService = {
     const finalTip = await submitToStellar(tip, payouts)
     const finalPayouts = await tipPayoutRepository.findByTipId(tip.id)
     return toTipResponse(finalTip, finalPayouts)
+  },
+
+  /**
+   * Completes a linked-wallet tip: the fan signed the unsigned transaction
+   * `submitTip` returned earlier (see submitToStellar's "linked" branch)
+   * with their own external wallet, and submits it back here. This never
+   * touches wallet-crypto.service.ts — there is no secret to decrypt.
+   */
+  async submitSignedTip(
+    tipId: string,
+    fanUserId: string,
+    signedTransactionXdr: string
+  ): Promise<TipResponse> {
+    const tip = await tipRepository.findById(tipId)
+    if (!tip || tip.fanUserId !== fanUserId) {
+      throw new AppError(404, "TIP_NOT_FOUND", "Tip not found")
+    }
+
+    if (tip.status !== "awaiting_signature") {
+      throw new AppError(
+        400,
+        "TIP_NOT_AWAITING_SIGNATURE",
+        "This tip is not waiting on an external signature"
+      )
+    }
+
+    try {
+      const result = await stellarClient.submitSignedTransactionXdr(signedTransactionXdr)
+      const confirmed = await tipRepository.markConfirmed(tip.id, result.hash, tip.attempts + 1)
+      publishTipEvent(confirmed, [])
+      logger.info("Tip finalized", { tipId: tip.id, status: "confirmed", isSplit: false })
+      return toTipResponse(confirmed)
+    } catch (error) {
+      const reason = errorMessage(error)
+      const failed = await tipRepository.markFailed(tip.id, reason, tip.attempts + 1)
+      publishTipEvent(failed, [])
+      logger.warn("Signed tip submission failed", { tipId: tip.id, error: reason })
+      return toTipResponse(failed)
+    }
   },
 
   async getTipForFan(tipId: string, fanUserId: string): Promise<TipResponse> {

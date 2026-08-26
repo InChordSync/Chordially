@@ -43,6 +43,13 @@ export const tipRepository = {
     return prisma.tip.update({ where: { id }, data: { status } })
   },
 
+  markAwaitingSignature(id: string, unsignedTransactionXdr: string): Promise<Tip> {
+    return prisma.tip.update({
+      where: { id },
+      data: { status: "awaiting_signature", unsignedTransactionXdr },
+    })
+  },
+
   markSubmitted(id: string, attempts: number): Promise<Tip> {
     return prisma.tip.update({ where: { id }, data: { status: "submitted", attempts } })
   },

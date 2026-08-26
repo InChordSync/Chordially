@@ -1,6 +1,8 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto"
 import { DecryptCommand, GenerateDataKeyCommand, KMSClient } from "@aws-sdk/client-kms"
 import { env } from "../../../shared/config/env.js"
+import { AppError } from "../../../shared/errors/app-error.js"
+import type { Wallet } from "../types/wallet.types.js"
 
 const ALGORITHM = "aes-256-gcm"
 const IV_LENGTH_BYTES = 12
@@ -42,6 +44,37 @@ export async function encryptSecret(plaintext: string): Promise<EncryptedSecret>
     encryptedDataKey: Buffer.from(dataKeyResult.CiphertextBlob).toString("base64"),
     iv: iv.toString("base64"),
     authTag: authTag.toString("base64"),
+  }
+}
+
+/**
+ * Narrows a Wallet down to its encrypted-secret fields, or throws if this
+ * is a linked wallet. This is the one required gate before calling
+ * decryptSecret on a Wallet row: since those fields are `string | null` on
+ * a linked wallet, TypeScript itself refuses to pass one through without
+ * going through this check first (or an unsafe cast), so a linked wallet
+ * structurally can't reach KMS decryption.
+ */
+export function requireCustodialSecrets(wallet: Wallet): EncryptedSecret {
+  if (
+    wallet.walletType !== "custodial" ||
+    wallet.encryptedSecret === null ||
+    wallet.encryptedDataKey === null ||
+    wallet.iv === null ||
+    wallet.authTag === null
+  ) {
+    throw new AppError(
+      400,
+      "WALLET_NOT_CUSTODIAL",
+      "This operation requires the platform to hold custody of the wallet, and this wallet is linked (self-custodied)"
+    )
+  }
+
+  return {
+    encryptedSecret: wallet.encryptedSecret,
+    encryptedDataKey: wallet.encryptedDataKey,
+    iv: wallet.iv,
+    authTag: wallet.authTag,
   }
 }
 

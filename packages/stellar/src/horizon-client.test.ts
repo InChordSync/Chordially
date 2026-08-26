@@ -407,6 +407,85 @@ describe('HorizonStellarClient', () => {
     })
   })
 
+  describe('verifySignature', () => {
+    it('accepts a valid signature from the claimed public key', () => {
+      const client = new HorizonStellarClient(config)
+      const signer = Keypair.random()
+      const message = 'link-challenge-nonce'
+      const signature = signer.sign(Buffer.from(message, 'utf8')).toString('base64')
+
+      expect(client.verifySignature(signer.publicKey(), message, signature)).toBe(true)
+    })
+
+    it('rejects a signature from a different key', () => {
+      const client = new HorizonStellarClient(config)
+      const signer = Keypair.random()
+      const impostor = Keypair.random()
+      const message = 'link-challenge-nonce'
+      const signature = impostor.sign(Buffer.from(message, 'utf8')).toString('base64')
+
+      expect(client.verifySignature(signer.publicKey(), message, signature)).toBe(false)
+    })
+
+    it('returns false rather than throwing for a malformed signature', () => {
+      const client = new HorizonStellarClient(config)
+      const signer = Keypair.random()
+
+      expect(client.verifySignature(signer.publicKey(), 'msg', 'not-valid-base64-sig')).toBe(false)
+    })
+  })
+
+  describe('buildPaymentTransactionXdr / submitSignedTransactionXdr', () => {
+    it('builds an unsigned transaction that the source can sign externally', async () => {
+      const client = new HorizonStellarClient(config)
+      const source = Keypair.random()
+      const destination = Keypair.random().publicKey()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn((client as any).server, 'loadAccount').mockResolvedValue(
+        new Account(source.publicKey(), '1')
+      )
+
+      const xdr = await client.buildPaymentTransactionXdr({
+        sourcePublicKey: source.publicKey(),
+        destinationPublicKey: destination,
+        amount: '10',
+      })
+
+      const unsigned = new Transaction(xdr, Networks.TESTNET)
+      expect(unsigned.signatures).toHaveLength(0)
+      expect(unsigned.operations).toHaveLength(1)
+    })
+
+    it('submits a transaction that was signed externally, without re-signing it', async () => {
+      const client = new HorizonStellarClient(config)
+      const source = Keypair.random()
+      const destination = Keypair.random().publicKey()
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn((client as any).server, 'loadAccount').mockResolvedValue(
+        new Account(source.publicKey(), '1')
+      )
+      const submitSpy = vi
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .spyOn((client as any).server, 'submitTransaction')
+        .mockResolvedValue({ hash: 'external-sign-hash', ledger: 9, successful: true })
+
+      const unsignedXdr = await client.buildPaymentTransactionXdr({
+        sourcePublicKey: source.publicKey(),
+        destinationPublicKey: destination,
+        amount: '10',
+      })
+      const transaction = new Transaction(unsignedXdr, Networks.TESTNET)
+      transaction.sign(source)
+
+      const result = await client.submitSignedTransactionXdr(transaction.toXDR())
+
+      expect(result).toEqual({ hash: 'external-sign-hash', ledger: 9, successful: true })
+      expect(submitSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('sponsorAccountCreation', () => {
     it('sponsors the new account reserve and signs with both keys', async () => {
       const client = new HorizonStellarClient(config)

@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client"
 import { creatorService } from "../../creators/services/creator.service.js"
 import { walletRepository } from "../../wallet/repositories/wallet.repository.js"
-import { decryptSecret } from "../../wallet/services/wallet-crypto.service.js"
+import { decryptSecret, requireCustodialSecrets } from "../../wallet/services/wallet-crypto.service.js"
+import type { Wallet } from "../../wallet/types/wallet.types.js"
 import { anchorClient } from "../../../shared/anchor/client.js"
 import { authenticateWithAnchor } from "../../../shared/anchor/sep24-client.js"
 import { env } from "../../../shared/config/env.js"
@@ -82,9 +83,10 @@ export const creatorPayoutService = {
       throw new AppError(400, "INSUFFICIENT_BALANCE", "Wallet balance is lower than the requested payout")
     }
 
+    const secretKey = await decryptSecret(requireCustodialSecrets(wallet))
+
     let token: string
     try {
-      const secretKey = await decryptSecret(wallet)
       token = await authenticateWithAnchor(anchorClient, wallet.publicKey, secretKey)
     } catch (error) {
       logger.error("Anchor SEP-10 authentication failed for payout", {
@@ -169,7 +171,7 @@ export const creatorPayoutService = {
     let token: string
     let anchorStatus
     try {
-      const secretKey = await decryptSecret(wallet)
+      const secretKey = await decryptSecret(requireCustodialSecrets(wallet))
       token = await authenticateWithAnchor(anchorClient, wallet.publicKey, secretKey)
       anchorStatus = await anchorClient.fetchTransaction({
         token,
@@ -213,13 +215,13 @@ export const creatorPayoutService = {
 
 async function submitOnChainLeg(
   payoutId: string,
-  wallet: { publicKey: string; encryptedSecret: string; encryptedDataKey: string; iv: string; authTag: string },
+  wallet: Wallet,
   destinationPublicKey: string,
   amount: string,
   assetCode: TipAssetCode,
   startingAttempts: number
 ) {
-  const sourceSecretKey = await decryptSecret(wallet)
+  const sourceSecretKey = await decryptSecret(requireCustodialSecrets(wallet))
   const asset = toAssetDescriptor(assetCode)
 
   let attempts = startingAttempts

@@ -1,3 +1,4 @@
+import { Keypair } from "@chordially/stellar"
 import request from "supertest"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createApp } from "../../../app.js"
@@ -9,6 +10,21 @@ const app = createApp()
 async function registerAndLogin(email: string) {
   await request(app).post("/api/auth/register").send({ email, password: "Password1!" })
   const res = await request(app).post("/api/auth/login").send({ email, password: "Password1!" })
+  return { token: res.body.token as string, userId: res.body.user.id as string }
+}
+
+async function registerLinkedAndLogin(email: string) {
+  const external = Keypair.random()
+  const challengeRes = await request(app).get(
+    `/api/wallet/link-challenge?publicKey=${external.publicKey()}`
+  )
+  const { challenge, nonce } = challengeRes.body as { challenge: string; nonce: string }
+  const signature = external.sign(Buffer.from(nonce, "utf8")).toString("base64")
+
+  const res = await request(app)
+    .post("/api/auth/register-linked")
+    .send({ email, password: "Password1!", publicKey: external.publicKey(), challenge, signature })
+
   return { token: res.body.token as string, userId: res.body.user.id as string }
 }
 
@@ -69,6 +85,19 @@ describe("POST /api/wallet/deposits", () => {
 
     expect(res.status).toBe(502)
     expect(res.body.error.code).toBe("ANCHOR_AUTH_FAILED")
+  })
+
+  it("rejects a deposit from a linked (non-custodial) wallet with a clear error", async () => {
+    const { token } = await registerLinkedAndLogin("deposit-linked@test.com")
+
+    const res = await request(app)
+      .post("/api/wallet/deposits")
+      .set("Authorization", `Bearer ${token}`)
+      .send({})
+
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe("WALLET_NOT_CUSTODIAL")
+    expect(anchorClient.requestChallenge).not.toHaveBeenCalled()
   })
 })
 
