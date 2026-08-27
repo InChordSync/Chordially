@@ -1,3 +1,10 @@
+const DEFAULT_STEPS: Step[] = [
+  { label: "Connect Stellar Wallet", done: false },
+  { label: "Fill Creator Bio & Profile Details", done: false },
+  { label: "Upload Avatar & Banner", done: false },
+  { label: "Create First Campaign", done: false },
+]
+
 import { StyleSheet, Text, View } from "react-native"
 
 interface Step {
@@ -13,7 +20,7 @@ interface Props {
  * Mirrors the web onboarding checklist so mobile creators see the same
  * setup steps and progress, in the same order, as the web flow.
  */
-export default function CreatorSetupProgressScreen({ steps }: Props) {
+export default function CreatorSetupProgressScreen({ steps = DEFAULT_STEPS }: Props) {
   const completed = steps.filter((s) => s.done).length
 
   return (
