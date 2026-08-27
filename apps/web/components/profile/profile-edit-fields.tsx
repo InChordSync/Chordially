@@ -26,6 +26,7 @@ export function ProfileEditFields({
       <label>
         Bio
         <textarea value={bio} onChange={(e) => update("bio", e.target.value)} maxLength={300} />
+        <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>{bio.length}/300 characters</span>
       </label>
       <label>
         Genre
