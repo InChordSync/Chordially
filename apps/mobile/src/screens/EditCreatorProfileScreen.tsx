@@ -34,11 +34,24 @@ export default function EditCreatorProfileScreen({ initial, onSave }: Props) {
             value={fields[key]}
             onChangeText={(v) => update(key, v)}
             multiline={multiline}
+            keyboardType={key === "socialLink" ? "url" : "default"}
+            autoCapitalize="none"
             style={styles.input}
           />
         </View>
       ))}
-      <Button title="Save" onPress={() => onSave(fields)} />
+      {
+        fields.socialLink.trim() && !fields.socialLink.startsWith("http") && (
+          <Text style={{ color: "red", marginTop: 8 }}>Invalid social link URL</Text>
+        )
+      }
+      <Button
+        title="Save"
+        onPress={() => {
+          if (fields.socialLink.trim() && !fields.socialLink.startsWith("http")) return;
+          onSave(fields);
+        }}
+      />
     </ScrollView>
   )
 }
