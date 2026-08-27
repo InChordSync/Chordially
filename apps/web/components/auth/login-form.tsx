@@ -76,6 +76,12 @@ export function LoginForm() {
         {fieldErrors.password && <p role="alert">{fieldErrors.password}</p>}
       </div>
 
+      <div style={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}>
+        <a href="/forgot-password" style={{ fontSize: "0.875rem", color: "#3b82f6", textDecoration: "underline" }}>
+          Forgot password?
+        </a>
+      </div>
+
       {formError && <p role="alert">{formError}</p>}
       {success && <p role="status">You&apos;re logged in.</p>}
 
