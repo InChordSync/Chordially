@@ -58,6 +58,7 @@ export function NotificationsInboxScreen({
       <View style={styles.filterRow}>
         <TouchableOpacity
           style={[styles.filterChip, filter === "ALL" && styles.filterChipActive]}
+          accessibilityLabel="Show all notifications"
           onPress={() => setFilter("ALL")}
           testID="filter-all-btn"
         >
@@ -67,6 +68,7 @@ export function NotificationsInboxScreen({
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterChip, filter === "UNREAD" && styles.filterChipActive]}
+          accessibilityLabel="Show unread notifications"
           onPress={() => setFilter("UNREAD")}
           testID="filter-unread-btn"
         >
