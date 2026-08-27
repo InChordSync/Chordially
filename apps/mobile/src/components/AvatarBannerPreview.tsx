@@ -1,3 +1,4 @@
+import React, { useState } from "react"
 import { Image, StyleSheet, View } from "react-native"
 
 interface Props {
@@ -10,16 +11,18 @@ interface Props {
  * the crop and image look right, without waiting on a network round trip.
  */
 export default function AvatarBannerPreview({ avatarUri, bannerUri }: Props) {
+  const [avatarError, setAvatarError] = useState(false);
+  const [bannerError, setBannerError] = useState(false);
   return (
     <View testID="avatar-banner-preview">
-      {bannerUri ? (
-        <Image source={{ uri: bannerUri }} style={styles.banner} />
+      {bannerUri && !bannerError ? (
+        <Image source={{ uri: bannerUri }} style={styles.banner} onError={() => setBannerError(true)} />
       ) : (
         <View style={[styles.banner, styles.placeholder]} />
       )}
 
-      {avatarUri ? (
-        <Image source={{ uri: avatarUri }} style={styles.avatar} />
+      {avatarUri && !avatarError ? (
+        <Image source={{ uri: avatarUri }} style={styles.avatar} onError={() => setAvatarError(true)} />
       ) : (
         <View style={[styles.avatar, styles.placeholder]} />
       )}
