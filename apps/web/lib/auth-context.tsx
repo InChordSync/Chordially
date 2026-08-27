@@ -36,7 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (storedToken && storedUser) {
       setToken(storedToken)
-      setUser(JSON.parse(storedUser) as AuthUser)
+      try {
+        setUser(JSON.parse(storedUser) as AuthUser)
+      } catch {
+        // Corrupted or manually-edited localStorage data — clear and recover
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+        window.localStorage.removeItem(USER_STORAGE_KEY)
+      }
     }
 
     setIsLoading(false)
