@@ -1,3 +1,4 @@
+import Image from "next/image"
 interface CreatorHeaderProps {
   displayName: string
   avatarUrl: string | null
@@ -23,7 +24,7 @@ export function CreatorHeader({
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={avatarUrl}
             alt={`${displayName}'s avatar`}
             width={72}
