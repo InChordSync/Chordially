@@ -1,3 +1,8 @@
+export const metadata = {
+  title: "Log In | Chordially",
+  description: "Log in to your account",
+}
+
 import Link from "next/link"
 import { LoginForm } from "../../components/auth/login-form"
 
