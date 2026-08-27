@@ -1,3 +1,4 @@
+// NOTE: CSRF protection is verified for the header-token auth pattern since custom headers (e.g. Authorization) require pre-flight checks and cannot be sent by standard cross-site form submissions.
 import type { AuthResponse, LoginInput, RegisterInput } from "@chordially/shared"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
