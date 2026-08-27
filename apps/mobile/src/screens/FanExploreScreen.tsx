@@ -26,9 +26,11 @@ export function FanExploreScreen({
   const [creators, setCreators] = useState<CreatorItem[]>(initialCreators)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
+    setHasMore(true)
     try {
       if (onRefresh) {
         const fresh = await onRefresh()
@@ -40,11 +42,15 @@ export function FanExploreScreen({
   }
 
   const handleEndReached = async () => {
-    if (isLoadingMore || !onFetchMore) return
+    if (isLoadingMore || !hasMore || !onFetchMore) return
     setIsLoadingMore(true)
     try {
       const more = await onFetchMore()
-      setCreators((prev) => [...prev, ...more])
+      if (more.length === 0) {
+        setHasMore(false)
+      } else {
+        setCreators((prev) => [...prev, ...more])
+      }
     } finally {
       setIsLoadingMore(false)
     }
@@ -79,6 +85,10 @@ export function FanExploreScreen({
         ListFooterComponent={
           isLoadingMore ? (
             <ActivityIndicator style={{ marginVertical: 16 }} size="small" color="#6366f1" />
+          ) : !hasMore ? (
+            <Text style={{ textAlign: "center", color: "#64748b", marginVertical: 16, fontSize: 14 }} testID="no-more-results">
+              No more results
+            </Text>
           ) : null
         }
       />
