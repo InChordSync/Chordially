@@ -1,3 +1,5 @@
+import { useEffect } from "react"
+let globalSavedCreatorsCache: SavedCreatorItem[] | null = null;
 import React, { useState } from "react"
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native"
 import { CompactCreatorCard } from "../components/CompactCreatorCard"
@@ -21,7 +23,16 @@ export function SavedCreatorsScreen({
   onRemoveBookmark,
   onFollowToggle,
 }: SavedCreatorsScreenProps) {
-  const [savedCreators, setSavedCreators] = useState<SavedCreatorItem[]>(initialSavedCreators)
+  const [savedCreators, setSavedCreators] = useState<SavedCreatorItem[]>(() => {
+    if (globalSavedCreatorsCache !== null) {
+      return globalSavedCreatorsCache;
+    }
+    return initialSavedCreators;
+  });
+
+  useEffect(() => {
+    globalSavedCreatorsCache = savedCreators;
+  }, [savedCreators]);
 
   const handleRemove = (creatorId: string) => {
     setSavedCreators((prev) => prev.filter((item) => item.id !== creatorId))
