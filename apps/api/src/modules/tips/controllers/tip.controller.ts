@@ -70,6 +70,19 @@ export const tipController = {
         throw new AppError(429, "RATE_LIMITED", "You're sending tips too quickly. Try again shortly.")
       }
 
+      const scope = await tipService.getRetryScope(id!, fanUserId)
+      if (!scope) {
+        throw new AppError(404, "TIP_NOT_FOUND", "Tip not found")
+      }
+
+      if (scope.streamId && !tipStreamRateLimiter.consume(scope.streamId)) {
+        throw new AppError(
+          429,
+          "STREAM_RATE_LIMITED",
+          "This stream is receiving too many tips right now. Try again shortly."
+        )
+      }
+
       const tip = await tipService.retryTip(id!, fanUserId)
 
       res.status(201).json(tip)

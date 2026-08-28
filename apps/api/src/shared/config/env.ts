@@ -8,6 +8,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   JWT_EXPIRES_IN: z.string().default("1h"),
+  JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
   AWS_REGION: z.string().default("us-east-1"),
   AWS_ACCESS_KEY_ID: z.string().default(""),
   AWS_SECRET_ACCESS_KEY: z.string().default(""),
