@@ -3,7 +3,8 @@
 import { updateMeSchema, type UpdateMeInput } from "@chordially/shared"
 import { useState, type FormEvent } from "react"
 import { ApiError } from "../../lib/api-client"
-import { updateMe } from "../../lib/user-client"
+import { getAvatarUploadUrl, updateMe } from "../../lib/user-client"
+import { MediaUploadControl } from "./media-upload-control"
 
 interface EditProfileFormProps {
   token: string
@@ -13,6 +14,7 @@ interface EditProfileFormProps {
     genre: string
     location: string
     genrePrefs: string[]
+    avatarUrl: string | null
   }
   onSuccess: () => void
 }
@@ -29,10 +31,45 @@ export function EditProfileForm({
   const [genrePrefsText, setGenrePrefsText] = useState(
     initialValues.genrePrefs.join(", ")
   )
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    initialValues.avatarUrl
+  )
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  async function handleFileUpload(file: File) {
+    setUploadError(null)
+    setUploading(true)
+    try {
+      const { uploadUrl, avatarUrl: nextAvatarUrl } =
+        await getAvatarUploadUrl(token, file.type)
+      await putFile(uploadUrl, file)
+      setAvatarUrl(nextAvatarUrl)
+    } catch (error) {
+      setUploadError(
+        error instanceof ApiError ? error.message : "Failed to upload image"
+      )
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function putFile(url: string, file: File): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open("PUT", url)
+      xhr.setRequestHeader("Content-Type", file.type)
+      xhr.onload = () =>
+        xhr.status >= 200 && xhr.status < 300 ? resolve() : reject()
+      xhr.onerror = () => reject()
+      xhr.send(file)
+    })
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -47,6 +84,7 @@ export function EditProfileForm({
     const input: UpdateMeInput = {
       displayName: displayName || undefined,
       bio: bio || null,
+      avatarUrl,
       genre: genre || undefined,
       location: location || undefined,
       genrePrefs: genrePrefs.length > 0 ? genrePrefs : undefined,
@@ -146,6 +184,14 @@ export function EditProfileForm({
         {fieldErrors.genrePrefs && (
           <p role="alert">{fieldErrors.genrePrefs}</p>
         )}
+      </div>
+
+      <div>
+        <label>Profile Photo</label>
+        <MediaUploadControl onFileValid={handleFileUpload} />
+        {uploading && <p role="status">Uploading...</p>}
+        {uploadError && <p role="alert">{uploadError}</p>}
+        {avatarUrl && !uploading && <p role="status">Photo uploaded</p>}
       </div>
 
       {formError && <p role="alert">{formError}</p>}

@@ -32,11 +32,14 @@ export function CreatorHeader({
             style={{ borderRadius: "50%", marginTop: -36 }}
           />
         ) : (
-          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#ccc", marginTop: -36 }} />
+          <div
+            aria-label="Default avatar"
+            style={{ width: 72, height: 72, borderRadius: "50%", background: "#ccc", marginTop: -36 }}
+          />
         )}
         <h1>
           {displayName}
-          {isVerified && <span title="Verified"> ✓</span>}
+          {isVerified && <span aria-label="Verified"> ✓</span>}
         </h1>
       </div>
     </header>
