@@ -5,6 +5,12 @@ import { DiscoveryEmptyState } from "../../src/components/DiscoveryEmptyState"
 
 const GENRES = ["Any", "Hip-Hop", "Pop", "Electronic", "Rock", "Jazz"]
 
+type SearchState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ok"; results: CreatorSearchResult[] }
+
 export default function DiscoverPage() {
   const [genre, setGenre] = useState("Any")
   const [location, setLocation] = useState("")
