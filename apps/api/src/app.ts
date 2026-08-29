@@ -8,12 +8,13 @@ import { tipsRouter } from "./modules/tips/routes/tip.routes.js"
 import { usersRouter } from "./modules/users/routes/user.routes.js"
 import { walletRouter } from "./modules/wallet/routes/wallet.routes.js"
 import { errorHandler } from "./shared/middleware/error-handler.js"
+import { openapiRouter } from "./modules/openapi/openapi.routes.js"
 import { metricsRouter } from "./shared/metrics/metrics.routes.js"
 
 export function createApp(): Express {
   const app = express()
 
-  app.use(express.json())
+  app.use(express.json({ limit: "256kb" }))
 
   app.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok" })
@@ -28,6 +29,7 @@ export function createApp(): Express {
   app.use("/api/creator-payouts", creatorPayoutsRouter)
   app.use("/api/reconciliation", reconciliationRouter)
   app.use("/api/metrics", metricsRouter)
+  app.use("/api/docs", openapiRouter)
 
   app.use(errorHandler)
 

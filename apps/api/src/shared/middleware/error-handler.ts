@@ -14,6 +14,17 @@ export function errorHandler(
     return
   }
 
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { status?: number }).status === 413
+  ) {
+    res.status(413).json({
+      error: { code: "PAYLOAD_TOO_LARGE", message: "Request body is too large" },
+    })
+    return
+  }
+
   if (err instanceof ZodError) {
     res.status(400).json({
       error: {
