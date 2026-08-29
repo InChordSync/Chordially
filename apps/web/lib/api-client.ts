@@ -1,5 +1,16 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://api.chordially.local"
 
+const TOKEN_STORAGE_KEY = "chordially.token"
+const USER_STORAGE_KEY = "chordially.user"
+
+export function handleUnauthorized(): void {
+  if (typeof window === "undefined") return
+
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(USER_STORAGE_KEY)
+  window.location.assign("/login")
+}
+
 export class ApiError extends Error {
   status: number
 
@@ -25,6 +36,10 @@ export async function apiFetch<T>(
   const data: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
+    if (response.status === 401) {
+      handleUnauthorized()
+    }
+
     const message =
       data &&
       typeof data === "object" &&
