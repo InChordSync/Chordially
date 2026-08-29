@@ -1,13 +1,6 @@
 "use client"
 
-import type { FormEvent } from "react"
 import { useEffect, useState } from "react"
-import Link from "next/link"
-import { searchCreators, type CreatorSearchResult } from "../../lib/creator-client"
-import {
-  ProfileErrorState,
-  ProfileSkeleton,
-} from "../../components/profile/profile-skeleton"
 import { DiscoveryEmptyState } from "../../src/components/DiscoveryEmptyState"
 
 const GENRES = ["Any", "Hip-Hop", "Pop", "Electronic", "Rock", "Jazz"]
@@ -23,7 +16,9 @@ export default function DiscoverPage() {
   const [location, setLocation] = useState("")
   const [liveOnly, setLiveOnly] = useState(false)
   const [debouncedLocation, setDebouncedLocation] = useState("")
-  const [state, setState] = useState<SearchState>({ status: "idle" })
+  const [results, setResults] = useState<string[]>([])
+  const [hasSearched, setHasSearched] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -32,32 +27,19 @@ export default function DiscoverPage() {
     return () => clearTimeout(handler)
   }, [location])
 
-  async function search() {
-    setState({ status: "loading" })
-    try {
-      const results = await searchCreators({
-        genre: genre === "Any" ? undefined : genre,
-        location: debouncedLocation || undefined,
-        liveOnly,
-      })
-      setState({ status: "ok", results })
-    } catch (error) {
-      setState({
-        status: "error",
-        message:
-          error instanceof Error ? error.message : "Failed to search creators",
-      })
-    }
+  function applyFilters() {
+    setError(null)
+    setResults([])
+    setHasSearched(true)
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (state.status === "loading") return
-    void search()
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    applyFilters()
   }
 
   function handleRetry() {
-    void search()
+    applyFilters()
   }
 
   function handleResetFilters() {
@@ -65,12 +47,16 @@ export default function DiscoverPage() {
     setLocation("")
     setDebouncedLocation("")
     setLiveOnly(false)
-    setState({ status: "idle" })
+    setResults([])
+    setHasSearched(false)
+    setError(null)
   }
 
   function handleSuggestionClick(suggestion: string) {
     setGenre(suggestion)
   }
+
+  const activeGenre = genre === "Any" ? "" : genre
 
   return (
     <main>
@@ -105,42 +91,25 @@ export default function DiscoverPage() {
           Live now only
         </label>
 
-        <button type="submit">Search</button>
+        <button type="submit">Apply</button>
       </form>
 
-      {state.status === "loading" && <ProfileSkeleton />}
-
-      {state.status === "error" && (
-        <ProfileErrorState message={state.message} onRetry={handleRetry} />
+      {error && (
+        <div role="alert">
+          <p>{error}</p>
+          <button type="button" onClick={handleRetry}>
+            Retry
+          </button>
+        </div>
       )}
 
-      {state.status === "ok" && state.results.length === 0 && (
+      {!error && hasSearched && results.length === 0 && (
         <DiscoveryEmptyState
           query={debouncedLocation}
-          activeGenre={genre === "Any" ? "" : genre}
+          activeGenre={activeGenre}
           onResetFilters={handleResetFilters}
           onSuggestionClick={handleSuggestionClick}
         />
-      )}
-
-      {state.status === "ok" && state.results.length > 0 && (
-        <ul>
-          {state.results.map((result) => (
-            <li key={result.slug}>
-              <Link href={`/creators/${result.slug}`}>
-                {result.avatarUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={result.avatarUrl} alt="" width={40} height={40} />
-                )}
-                <span>{result.displayName}</span>
-                <span>@{result.slug}</span>
-                {result.followerCount !== undefined && (
-                  <span>{result.followerCount} followers</span>
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
       )}
     </main>
   )

@@ -40,16 +40,20 @@ export function EditProfileForm({
   const [success, setSuccess] = useState(false)
 
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
-  async function handleFileUpload(file: File) {
+  async function handleFile(file: File) {
     setUploadError(null)
     setUploading(true)
+    setUploadProgress(0)
     try {
-      const { uploadUrl, avatarUrl: nextAvatarUrl } =
-        await getAvatarUploadUrl(token, file.type)
+      const { uploadUrl, avatarUrl } = await getAvatarUploadUrl(
+        token,
+        file.type
+      )
       await putFile(uploadUrl, file)
-      setAvatarUrl(nextAvatarUrl)
+      setAvatarUrl(avatarUrl)
     } catch (error) {
       setUploadError(
         error instanceof ApiError ? error.message : "Failed to upload image"
@@ -64,6 +68,11 @@ export function EditProfileForm({
       const xhr = new XMLHttpRequest()
       xhr.open("PUT", url)
       xhr.setRequestHeader("Content-Type", file.type)
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          setUploadProgress(Math.round((event.loaded / event.total) * 100))
+        }
+      }
       xhr.onload = () =>
         xhr.status >= 200 && xhr.status < 300 ? resolve() : reject()
       xhr.onerror = () => reject()
@@ -188,8 +197,8 @@ export function EditProfileForm({
 
       <div>
         <label>Profile Photo</label>
-        <MediaUploadControl onFileValid={handleFileUpload} />
-        {uploading && <p role="status">Uploading...</p>}
+        <MediaUploadControl onFileValid={handleFile} />
+        {uploading && <p role="status">Uploading... {uploadProgress}%</p>}
         {uploadError && <p role="alert">{uploadError}</p>}
         {avatarUrl && !uploading && <p role="status">Photo uploaded</p>}
       </div>

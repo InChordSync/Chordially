@@ -50,7 +50,8 @@ export default function EditProfilePage() {
     genre: creatorProfile?.genre ?? "",
     location: creatorProfile?.location ?? "",
     genrePrefs: fanProfile?.genrePrefs ?? [],
-    avatarUrl: creatorProfile?.avatarUrl ?? fanProfile?.avatarUrl ?? null,
+    avatarUrl:
+      creatorProfile?.avatarUrl ?? fanProfile?.avatarUrl ?? null,
   }
 
   return (
