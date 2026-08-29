@@ -39,6 +39,7 @@ model CreatorProfile {
   payoutShares StreamPayoutConfigPayee[]
   tipPayouts   TipPayout[]
   payouts      CreatorPayout[]
+  bookmarkedBy Bookmark[]
 }
 
 model FanProfile {
@@ -50,6 +51,7 @@ model FanProfile {
   genrePrefs  String   @default("[]")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  bookmarks   Bookmark[]
 }
 
 // Custodial Stellar wallet. The secret key never leaves this row in
@@ -242,4 +244,18 @@ model RefreshToken {
   updatedAt DateTime  @updatedAt
 
   @@index([userId])
+}
+
+// A fan's saved reference to a creator — the backend behind mobile/web
+// "saved creators" lists. A fan can bookmark each creator at most once.
+model Bookmark {
+  id        String        @id @default(cuid())
+  fanId     String
+  fan       FanProfile    @relation(fields: [fanId], references: [id], onDelete: Cascade)
+  creatorId String
+  creator   CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([fanId, creatorId])
+  @@index([fanId])
 }

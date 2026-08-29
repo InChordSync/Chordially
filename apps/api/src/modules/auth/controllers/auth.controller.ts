@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from "express"
 import { env } from "../../../shared/config/env.js"
+import { AppError } from "../../../shared/errors/app-error.js"
 import { authService } from "../services/auth.service.js"
+import { loginPerAccountRateLimiter, loginPerIpRateLimiter } from "../services/auth-rate-limiters.js"
 import {
   loginSchema,
   logoutSchema,
@@ -46,6 +48,25 @@ export const authController = {
   async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const input = loginSchema.parse(req.body)
+
+      // Brute-force mitigation: throttle logins by both the target account
+      // (email) and the caller's IP so guessing is slowed down even when
+      // attempts are spread across many accounts or behind a shared NAT.
+      if (!loginPerAccountRateLimiter.consume(input.email.toLowerCase())) {
+        throw new AppError(
+          429,
+          "RATE_LIMITED",
+          "Too many login attempts for this account. Please try again shortly."
+        )
+      }
+      if (!loginPerIpRateLimiter.consume(req.ip ?? "unknown")) {
+        throw new AppError(
+          429,
+          "IP_RATE_LIMITED",
+          "Too many login attempts from this address. Please try again shortly."
+        )
+      }
+
       const result = await authService.login(input)
       setAuthTokenCookie(res, result.token)
       res.status(200).json(result)
