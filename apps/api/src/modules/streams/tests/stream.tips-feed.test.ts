@@ -1,9 +1,10 @@
 import http from "node:http"
 import type { AddressInfo } from "node:net"
 import request from "supertest"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createApp } from "../../../app.js"
 import { prisma } from "../../../shared/database/prisma.js"
+import { tipPayoutRepository } from "../../tips/repositories/tip-payout.repository.js"
 
 const app = createApp()
 
@@ -60,6 +61,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   await new Promise<void>((resolve) => server.close(() => resolve()))
 })
 
@@ -252,6 +254,49 @@ describe("GET /api/streams/:id/tips (SSE feed)", () => {
     expect(payouts).toHaveLength(2)
     expect(payouts.find((p) => p.creatorId === host.id)?.amount).toBe("6.0000000")
     expect(payouts.find((p) => p.creatorId === bob.id)?.amount).toBe("4.0000000")
+
+    sseReq.destroy()
+  })
+
+  it("loads backlog payouts with a single batched query, not one per tip", async () => {
+    const fan = await registerAndLogin("backlog-batch-fan@test.com")
+    const { token: hostToken, creator } = await createCreatorWithProfileAndWallet(
+      "backlog-batch-creator@test.com",
+      "backlog-batch-creator"
+    )
+
+    const streamRes = await request(app)
+      .post("/api/streams")
+      .set("Authorization", `Bearer ${hostToken}`)
+      .send({})
+    const streamId = streamRes.body.id as string
+
+    // Two confirmed tips in the backlog before the feed connects.
+    for (let i = 0; i < 2; i++) {
+      const res = await request(app)
+        .post("/api/tips")
+        .set("Authorization", `Bearer ${fan.token}`)
+        .send({
+          creatorId: creator.id,
+          amount: "10",
+          idempotencyKey: crypto.randomUUID(),
+          streamId,
+        })
+      expect(res.body.status).toBe("confirmed")
+    }
+
+    const findByTipIds = vi.spyOn(tipPayoutRepository, "findByTipIds")
+
+    const { req: sseReq, collectUntil } = await openSseConnection(
+      `/api/streams/${streamId}/tips`,
+      hostToken
+    )
+    const events = await collectUntil((collected) => collected.length >= 2)
+
+    expect(findByTipIds).toHaveBeenCalledTimes(1)
+    expect(findByTipIds).toHaveBeenCalledWith(
+      expect.arrayContaining(events.map((event) => event.data.tipId))
+    )
 
     sseReq.destroy()
   })

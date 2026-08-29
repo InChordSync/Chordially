@@ -19,3 +19,14 @@ export const registerLinkedSchema = z.object({
 })
 
 export type RegisterLinkedInput = z.infer<typeof registerLinkedSchema>
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, "refreshToken is required"),
+})
+
+export const logoutSchema = z.object({
+  refreshToken: z.string().min(1).optional(),
+})
+
+export type RefreshTokenRequest = z.infer<typeof refreshTokenSchema>
+export type LogoutRequest = z.infer<typeof logoutSchema>

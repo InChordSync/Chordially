@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { loginUser, registerUser } from "./auth-client"
+import { handleUnauthorized } from "./api-client"
 
 const TOKEN_STORAGE_KEY = "chordially.token"
 const USER_STORAGE_KEY = "chordially.user"
@@ -36,7 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (storedToken && storedUser) {
       setToken(storedToken)
-      setUser(JSON.parse(storedUser) as AuthUser)
+      try {
+        setUser(JSON.parse(storedUser) as AuthUser)
+      } catch {
+        window.localStorage.removeItem(USER_STORAGE_KEY)
+        setToken(null)
+      }
     }
 
     setIsLoading(false)

@@ -18,6 +18,7 @@ model User {
   wallet         Wallet?
   tipsSent       Tip[]
   walletDeposits WalletDeposit[]
+  refreshTokens  RefreshToken[]
 }
 
 model CreatorProfile {
@@ -220,6 +221,25 @@ model WalletDeposit {
   failureReason       String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Server-side session for the access/refresh token pair issued at
+// login/register. Only the sha256 hash of the raw refresh token is stored;
+// the raw token is returned once to the client and can never be re-derived
+// from the database. A token is single-use: refresh rotates it (the
+// presented one is revoked and a new pair issued), and logout revokes
+// every outstanding token for the user so they stop working immediately.
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([userId])
 }

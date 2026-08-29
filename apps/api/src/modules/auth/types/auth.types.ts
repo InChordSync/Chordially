@@ -10,6 +10,13 @@ export interface AuthUserResponse {
 export interface AuthResult {
   user: AuthUserResponse
   token: string
+  refreshToken: string
+}
+
+export interface AuthRefreshResult {
+  user: AuthUserResponse
+  accessToken: string
+  refreshToken: string
 }
 
 export function toAuthUserResponse(user: User): AuthUserResponse {
