@@ -6,6 +6,7 @@ import { toCreatorResponse } from "../../creators/types/creator.types.js"
 import { toFanResponse } from "../../fans/types/fan.types.js"
 import { userService } from "../services/user.service.js"
 import { createAvatarUploadUrl } from "../../../shared/storage/s3.js"
+import { env } from "../../../shared/config/env.js"
 import { AppError } from "../../../shared/errors/app-error.js"
 
 const ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"]
@@ -54,7 +55,7 @@ export const userController = {
       const ext = contentType.split("/")[1]
       const key = `avatars/${userId}.${ext}`
       const uploadUrl = await createAvatarUploadUrl(key, contentType)
-      const avatarUrl = `https://${process.env["AWS_S3_BUCKET"]}.s3.amazonaws.com/${key}`
+      const avatarUrl = `https://${env.AWS_S3_BUCKET}.s3.amazonaws.com/${key}`
 
       res.status(200).json({ uploadUrl, avatarUrl })
     } catch (error) {
@@ -75,6 +76,15 @@ export const userController = {
       ])
 
       const creatorFields = { displayName, avatarUrl, bio, genre, location }
+
+      // Post-upload verification: before the avatar is marked active, fetch
+      // the stored object and confirm its real size/type/magic bytes via the
+      // moderation service (the presigned-URL flow only ever saw the client's
+      // declared content type).
+      if (creatorProfile && avatarUrl !== undefined) {
+        await verifyAvatarUrl(creatorProfile.userId, avatarUrl)
+      }
+
       const hasCreatorUpdate = Object.values(creatorFields).some((v) => v !== undefined)
 
       if (creatorProfile && hasCreatorUpdate) {

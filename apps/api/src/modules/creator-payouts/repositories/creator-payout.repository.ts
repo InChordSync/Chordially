@@ -25,6 +25,19 @@ export const creatorPayoutRepository = {
     })
   },
 
+  findByCreatorIdPaginated(creatorId: string, page: number, pageSize: number): Promise<CreatorPayout[]> {
+    return prisma.creatorPayout.findMany({
+      where: { creatorId },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    })
+  },
+
+  countByCreatorId(creatorId: string): Promise<number> {
+    return prisma.creatorPayout.count({ where: { creatorId } })
+  },
+
   markSubmitted(id: string, txHash: string, attempts: number): Promise<CreatorPayout> {
     return prisma.creatorPayout.update({
       where: { id },

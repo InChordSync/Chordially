@@ -8,17 +8,22 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  passwordHash   String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  creatorProfile CreatorProfile?
-  fanProfile     FanProfile?
-  wallet         Wallet?
-  tipsSent       Tip[]
-  walletDeposits WalletDeposit[]
-  refreshTokens  RefreshToken[]
+  id                   String                  @id @default(cuid())
+  email                String                  @unique
+  passwordHash         String
+  emailVerified        Boolean                 @default(false)
+  failedLoginAttempts  Int                     @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  creatorProfile       CreatorProfile?
+  fanProfile           FanProfile?
+  wallet               Wallet?
+  tipsSent             Tip[]
+  walletDeposits       WalletDeposit[]
+  refreshTokens        RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens  PasswordResetToken[]
 }
 
 model CreatorProfile {
@@ -39,6 +44,7 @@ model CreatorProfile {
   payoutShares StreamPayoutConfigPayee[]
   tipPayouts   TipPayout[]
   payouts      CreatorPayout[]
+  bookmarkedBy Bookmark[]
 }
 
 model FanProfile {
@@ -50,6 +56,7 @@ model FanProfile {
   genrePrefs  String   @default("[]")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  bookmarks   Bookmark[]
 }
 
 // Custodial Stellar wallet. The secret key never leaves this row in
@@ -204,6 +211,28 @@ model CreatorPayout {
   @@index([creatorId])
 }
 
+// A generic, database-backed idempotency record store. Unlike the
+// request-scoped in-memory Map it replaces, these rows survive a restart
+// and are shared across every API instance, so a retried or duplicated
+// request can never trigger the same money movement twice (see
+// modules/payments/services/payment-idempotency-guard.service.ts).
+model TransactionIdempotencyRecord {
+  id           String   @id @default(cuid())
+  key          String
+  // Owner namespacing: the idempotency key is unique per owner so two
+  // different users can never collide, mirroring Tip/CreatorPayout.
+  ownerId      String
+  requestPath  String
+  responseBody String   @default("{}")
+  statusCode   Int      @default(200)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([ownerId, key])
+  @@index([key])
+}
+
 // A fan's fiat-to-Stellar deposit via a SEP-24 anchor, kept as its own
 // audit trail distinct from Tip since this is platform money movement
 // (real fiat rails), not a tip. Status mirrors SEP-24's own transaction
@@ -225,6 +254,25 @@ model WalletDeposit {
   @@index([userId])
 }
 
+// A notification delivered to a recipient (fan or creator). The web/mobile
+// shells shipped without any backend to read from; this is the persistence
+// model behind GET /api/notifications and the mark-read endpoints.
+model Notification {
+  id          String   @id @default(cuid())
+  recipientId String
+  recipient   User     @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String?
+  type        String
+  title       String
+  body        String
+  metadata    String   @default("{}")
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([recipientId, read])
+}
+
 // Server-side session for the access/refresh token pair issued at
 // login/register. Only the sha256 hash of the raw refresh token is stored;
 // the raw token is returned once to the client and can never be re-derived
@@ -244,22 +292,16 @@ model RefreshToken {
   @@index([userId])
 }
 
-// Sliding shared-store rate-limit counters keyed per scope (e.g. an IP
-// address or a route + user id). Unlike the in-memory limiter in
-// shared/rate-limit/rate-limiter.ts, this is backed by the database so every
-// API instance in a multi-instance deployment tallies against the same
-// window, preventing callers from bypassing a limit by rotating across
-// instances. See shared/rate-limit/db-rate-limiter.ts.
-model RateLimitRecord {
-  id          String   @id @default(cuid())
-  // Scope string the limit applies to, e.g. "ip:1.2.3.4" or
-  // "creator-payout:user:<id>". Uniqueness gives us an atomic upsert key.
-  key         String   @unique
-  // Running count of requests in the current fixed window.
-  count       Int      @default(0)
-  // Start of the current fixed window. When consume() is called with 'now'
-  // >= windowStart + windowMs the counter resets and the window slides.
-  windowStart DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// A fan's saved reference to a creator — the backend behind mobile/web
+// "saved creators" lists. A fan can bookmark each creator at most once.
+model Bookmark {
+  id        String        @id @default(cuid())
+  fanId     String
+  fan       FanProfile    @relation(fields: [fanId], references: [id], onDelete: Cascade)
+  creatorId String
+  creator   CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([fanId, creatorId])
+  @@index([fanId])
 }
