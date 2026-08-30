@@ -12,15 +12,18 @@ import { walletRouter } from "./modules/wallet/routes/wallet.routes.js"
 import { errorHandler } from "./shared/middleware/error-handler.js"
 import { openapiRouter } from "./modules/openapi/openapi.routes.js"
 import { metricsRouter } from "./shared/metrics/metrics.routes.js"
+import { healthRouter } from "./modules/health/routes/health.routes.js"
+import { planningRouter } from "./modules/planning/routes/planning.routes.js"
+import { notificationsRouter } from "./modules/notifications/routes/notification.routes.js"
+import { devRouter } from "./modules/dev/routes/dev.routes.js"
+import { env } from "./shared/config/env.js"
 
 export function createApp(): Express {
   const app = express()
 
   app.use(express.json({ limit: "256kb" }))
 
-  app.get("/health", (_req, res) => {
-    res.status(200).json({ status: "ok" })
-  })
+  app.use("/health", healthRouter)
 
   app.use("/api/auth", authRouter)
   app.use("/api/creators", creatorsRouter)
@@ -32,8 +35,15 @@ export function createApp(): Express {
   app.use("/api/streams", streamsRouter)
   app.use("/api/creator-payouts", creatorPayoutsRouter)
   app.use("/api/reconciliation", reconciliationRouter)
+  app.use("/api/planning", planningRouter)
+  app.use("/api/notifications", notificationsRouter)
   app.use("/api/metrics", metricsRouter)
   app.use("/api/docs", openapiRouter)
+
+  // Dev-only local mock tooling: mounted only under NODE_ENV=development.
+  if (env.NODE_ENV === "development") {
+    app.use("/api/dev", devRouter)
+  }
 
   app.use(errorHandler)
 

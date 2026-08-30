@@ -232,6 +232,25 @@ model WalletDeposit {
   @@index([userId])
 }
 
+// A notification delivered to a recipient (fan or creator). The web/mobile
+// shells shipped without any backend to read from; this is the persistence
+// model behind GET /api/notifications and the mark-read endpoints.
+model Notification {
+  id          String   @id @default(cuid())
+  recipientId String
+  recipient   User     @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String?
+  type        String
+  title       String
+  body        String
+  metadata    String   @default("{}")
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([recipientId, read])
+}
+
 // Server-side session for the access/refresh token pair issued at
 // login/register. Only the sha256 hash of the raw refresh token is stored;
 // the raw token is returned once to the client and can never be re-derived
