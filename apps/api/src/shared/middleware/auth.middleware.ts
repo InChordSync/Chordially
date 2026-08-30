@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express"
 import jwt from "jsonwebtoken"
 import { env } from "../config/env.js"
+import { prisma } from "../database/prisma.js"
 import { AppError } from "../errors/app-error.js"
 
 interface AccessTokenPayload {
@@ -53,5 +54,36 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
     next()
   } catch {
     throw new AppError(401, "UNAUTHORIZED", "Invalid or expired token")
+  }
+}
+
+/**
+ * Role gate for operator-only endpoints (reconciliation run, internal
+ * metrics). Must be mounted AFTER requireAuth so req.userId is populated: it
+ * loads the caller's User row and checks the role column against the allowed
+ * set, rejecting non-matching callers with 403. Keep the freshness trade-off
+ * in mind — role is read from the DB per request, not embedded in the JWT,
+ * so a role change takes effect immediately (no token reissue needed).
+ */
+export async function requireRole(roles: string[]) {
+  return async function requireRoleMiddleware(
+    req: Request,
+    _res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: req.userId ?? "" },
+        select: { role: true },
+      })
+
+      if (!user || !roles.includes(user.role)) {
+        throw new AppError(403, "FORBIDDEN", "You do not have permission to perform this action")
+      }
+
+      next()
+    } catch (error) {
+      next(error)
+    }
   }
 }

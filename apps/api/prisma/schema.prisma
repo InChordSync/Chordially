@@ -11,6 +11,11 @@ model User {
   id             String          @id @default(cuid())
   email          String          @unique
   passwordHash   String
+  // Access level for role-gated (operator-only) endpoints such as the manual
+  // reconciliation run and internal metrics. "user" is the default for
+  // fan/creator accounts; only explicitly promoted accounts are "admin".
+  // Role checks live in shared/middleware/auth.middleware.ts (requireRole).
+  role           String          @default("user")
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   creatorProfile CreatorProfile?

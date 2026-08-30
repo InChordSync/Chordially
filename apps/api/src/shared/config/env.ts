@@ -48,12 +48,23 @@ const envSchema = z.object({
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),
   RECONCILIATION_ENABLED: z.coerce.boolean().default(true),
   RECONCILIATION_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  // Per-admin cap on manual `POST /api/reconciliation/run` triggers.
+  RECONCILIATION_RUN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  RECONCILIATION_RUN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   // How long a tip can sit in "submitted" before reconciliation will look at
   // it at all (gives a normal in-flight submission time to finish).
   RECONCILIATION_STUCK_THRESHOLD_MS: z.coerce.number().int().positive().default(60_000),
   // How long a tip can stay unresolved before reconciliation gives up and
   // dead-letters it as failed.
   RECONCILIATION_DEAD_LETTER_THRESHOLD_MS: z.coerce.number().int().positive().default(300_000),
+  // Per-instance cap on concurrent SSE tip-stream connections. Each holds an
+  // open socket, an event-bus subscriber and a heartbeat timer, so an
+  // unbounded number of them can exhaust file descriptors and memory (see
+  // stream.controller.ts streamTips).
+  SSE_STREAM_MAX_CONNECTIONS: z.coerce.number().int().positive().default(1_000),
+  // Per-user cap on concurrent SSE tip-stream connections from the same
+  // account, so one fan can't open hundreds of sockets to a single stream.
+  SSE_STREAM_MAX_PER_USER: z.coerce.number().int().positive().default(5),
 })
 
 export type Env = z.infer<typeof envSchema>
