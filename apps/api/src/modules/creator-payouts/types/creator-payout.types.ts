@@ -36,6 +36,20 @@ export interface CreatorPayoutResponse {
   createdAt: string
 }
 
+export interface PaginatedCreatorPayouts {
+  items: CreatorPayoutResponse[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+}
+
+export interface PaginationParams {
+  page: number
+  pageSize: number
+}
+
 export function toCreatorPayoutResponse(payout: CreatorPayout): CreatorPayoutResponse {
   return {
     id: payout.id,
