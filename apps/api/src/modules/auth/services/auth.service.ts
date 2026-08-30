@@ -124,8 +124,14 @@ async function createRefreshToken(userId: string): Promise<string> {
 async function createUserAccount(email: string, password: string) {
   const existing = await userService.findByEmail(email)
 
+  // Deliberately generic: returning a distinct "email already registered"
+  // error would let an attacker probe which addresses have accounts. This
+  // reveals nothing about whether the email exists — a would-be enumerator
+  // gets the same response whether the account exists or registration failed
+  // for any other reason. Bulk probing is further throttled by the register
+  // rate limiter (see modules/auth/middleware/auth-rate-limit.ts).
   if (existing) {
-    throw new AppError(409, "EMAIL_ALREADY_REGISTERED", "An account with this email already exists")
+    throw new AppError(409, "REGISTRATION_FAILED", "Unable to complete registration")
   }
 
   const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS)

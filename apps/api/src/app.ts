@@ -10,6 +10,7 @@ import { tipsRouter } from "./modules/tips/routes/tip.routes.js"
 import { usersRouter } from "./modules/users/routes/user.routes.js"
 import { walletRouter } from "./modules/wallet/routes/wallet.routes.js"
 import { errorHandler } from "./shared/middleware/error-handler.js"
+import { globalRateLimit } from "./shared/middleware/global-rate-limit.js"
 import { openapiRouter } from "./modules/openapi/openapi.routes.js"
 import { metricsRouter } from "./shared/metrics/metrics.routes.js"
 import { healthRouter } from "./modules/health/routes/health.routes.js"
@@ -24,6 +25,16 @@ export function createApp(): Express {
   app.use(express.json({ limit: "256kb" }))
 
   app.use("/health", healthRouter)
+
+  // App-wide IP-based throttle (defense-in-depth under the per-feature
+  // limiters). Health probes and the metrics endpoint are exempt.
+  app.use((req, res, next) => {
+    if (req.path === "/health" || req.path.startsWith("/api/metrics")) {
+      next()
+      return
+    }
+    void globalRateLimit(req, res, next)
+  })
 
   app.use("/api/auth", authRouter)
   app.use("/api/creators", creatorsRouter)
