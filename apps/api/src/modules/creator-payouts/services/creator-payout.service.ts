@@ -12,6 +12,7 @@ import { logger } from "../../../shared/logger/logger.js"
 import { stellarClient } from "../../../shared/stellar/client.js"
 import { toAssetDescriptor, type TipAssetCode } from "../../../shared/stellar/assets.js"
 import { creatorPayoutRepository } from "../repositories/creator-payout.repository.js"
+import { paymentIdempotencyGuard } from "../../payments/services/payment-idempotency-guard.service.js"
 import {
   toCreatorPayoutResponse,
   type CreatorPayoutResponse,
@@ -68,6 +69,14 @@ export const creatorPayoutService = {
         "EMAIL_NOT_VERIFIED",
         "Verify your email address before withdrawing funds"
       )
+    }
+
+    // Database-backed idempotency guard (shared across instances): replay the
+    // recorded response for a retried key. The CreatorPayout unique constraint
+    // below remains the race-safe source of truth for concurrent duplicates.
+    const check = await paymentIdempotencyGuard.checkOrLockKey(idempotencyKey, creator.id)
+    if (check.isDuplicate && check.previousResponse) {
+      return check.previousResponse as unknown as CreatorPayoutResponse
     }
 
     const existing = await creatorPayoutRepository.findByIdempotencyKey(creator.id, idempotencyKey)
@@ -147,6 +156,14 @@ export const creatorPayoutService = {
       }
       throw error
     }
+
+    await paymentIdempotencyGuard.saveKeyRecord({
+      key: idempotencyKey,
+      ownerId: creator.id,
+      requestPath: "/api/creator-payouts",
+      responseBody: toCreatorPayoutResponse(payout) as unknown as Record<string, unknown>,
+      statusCode: 201,
+    })
 
     return toCreatorPayoutResponse(payout)
   },
