@@ -314,4 +314,35 @@ describe("GET /api/streams/:id/tips (SSE feed)", () => {
     expect(res.status).toBe(404)
     expect(res.body.error.code).toBe("STREAM_NOT_FOUND")
   })
+
+  it("rejects excess concurrent connections once the per-user SSE cap is hit", async () => {
+    const { token: hostToken, creator } = await createCreatorWithProfileAndWallet(
+      "sse-cap-creator@test.com",
+      "sse-cap-creator"
+    )
+
+    const streamRes = await request(app)
+      .post("/api/streams")
+      .set("Authorization", `Bearer ${hostToken}`)
+      .send({ title: "Capped" })
+    const streamId = streamRes.body.id as string
+    const path = `/api/streams/${streamId}/tips`
+
+    // Default per-user cap is 5 (SSE_STREAM_MAX_PER_USER); hold that many
+    // connections open so the next one is rejected.
+    const held: { req: http.ClientRequest }[] = []
+    for (let i = 0; i < 5; i++) {
+      const conn = await openSseConnection(path, hostToken)
+      held.push(conn)
+    }
+
+    const sixth = await request(app).get(path).set("Authorization", `Bearer ${hostToken}`)
+
+    expect(sixth.status).toBe(503)
+    expect(sixth.body.error.code).toBe("SSE_LIMIT_REACHED")
+
+    for (const conn of held) {
+      conn.req.destroy()
+    }
+  })
 })

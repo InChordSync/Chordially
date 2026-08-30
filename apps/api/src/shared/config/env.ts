@@ -60,6 +60,9 @@ const envSchema = z.object({
   CREATOR_PROFILE_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(120),
   RECONCILIATION_ENABLED: z.coerce.boolean().default(true),
   RECONCILIATION_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  // Per-admin cap on manual `POST /api/reconciliation/run` triggers.
+  RECONCILIATION_RUN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  RECONCILIATION_RUN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   // How long a tip can sit in "submitted" before reconciliation will look at
   // it at all (gives a normal in-flight submission time to finish).
   RECONCILIATION_STUCK_THRESHOLD_MS: z.coerce.number().int().positive().default(60_000),

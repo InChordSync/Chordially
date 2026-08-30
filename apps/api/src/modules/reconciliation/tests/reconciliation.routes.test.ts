@@ -10,7 +10,13 @@ async function registerAndLogin(email: string) {
   const res = await request(app)
     .post("/api/auth/login")
     .send({ email, password: "Password1!" })
-  return { token: res.body.token as string }
+  return { token: res.body.token as string, userId: res.body.user.id as string }
+}
+
+async function registerAndLoginAdmin(email: string) {
+  const { token, userId } = await registerAndLogin(email)
+  await prisma.user.update({ where: { id: userId }, data: { role: "admin" } })
+  return { token, userId }
 }
 
 beforeEach(async () => {
@@ -24,8 +30,19 @@ describe("POST /api/reconciliation/run", () => {
     expect(res.status).toBe(401)
   })
 
-  it("runs reconciliation and returns a summary", async () => {
+  it("rejects non-admin (regular user) requests with 403", async () => {
     const { token } = await registerAndLogin("recon-route-fan@test.com")
+
+    const res = await request(app)
+      .post("/api/reconciliation/run")
+      .set("Authorization", `Bearer ${token}`)
+
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe("FORBIDDEN")
+  })
+
+  it("runs reconciliation and returns a summary when an admin triggers it", async () => {
+    const { token } = await registerAndLoginAdmin("recon-route-admin@test.com")
 
     const res = await request(app)
       .post("/api/reconciliation/run")
