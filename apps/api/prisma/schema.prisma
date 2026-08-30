@@ -243,3 +243,23 @@ model RefreshToken {
 
   @@index([userId])
 }
+
+// Sliding shared-store rate-limit counters keyed per scope (e.g. an IP
+// address or a route + user id). Unlike the in-memory limiter in
+// shared/rate-limit/rate-limiter.ts, this is backed by the database so every
+// API instance in a multi-instance deployment tallies against the same
+// window, preventing callers from bypassing a limit by rotating across
+// instances. See shared/rate-limit/db-rate-limiter.ts.
+model RateLimitRecord {
+  id          String   @id @default(cuid())
+  // Scope string the limit applies to, e.g. "ip:1.2.3.4" or
+  // "creator-payout:user:<id>". Uniqueness gives us an atomic upsert key.
+  key         String   @unique
+  // Running count of requests in the current fixed window.
+  count       Int      @default(0)
+  // Start of the current fixed window. When consume() is called with 'now'
+  // >= windowStart + windowMs the counter resets and the window slides.
+  windowStart DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

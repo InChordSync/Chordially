@@ -46,6 +46,21 @@ const envSchema = z.object({
   TIP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10_000),
   TIP_RATE_LIMIT_PER_FAN: z.coerce.number().int().positive().default(5),
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),
+  // Conservative app-wide IP limit applied as defense-in-depth under every
+  // feature limiter. Deliberately looser than feature-level limits so it
+  // catches aggregate abuse without masking a single endpoint's own budget.
+  GLOBAL_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  GLOBAL_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1200),
+  // Per-user limit on starting creator payout withdrawals. Deliberately
+  // stricter than the global IP limit: starting a real-money cash-out is a
+  // high-cost operation we want to bound tightly per account.
+  CREATOR_PAYOUT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  CREATOR_PAYOUT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  // Per-email limit on account registration. Combined with the generic
+  // duplicate-email response (see auth.service createUserAccount), this keeps
+  // bulk email probing both expensive and non-informative.
+  REGISTER_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  REGISTER_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   RECONCILIATION_ENABLED: z.coerce.boolean().default(true),
   RECONCILIATION_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   // How long a tip can sit in "submitted" before reconciliation will look at
