@@ -116,6 +116,89 @@ export const openapiSpec = {
         responses: {
           "200": { description: "Logged in, returns JWT token" },
           "401": { description: "Invalid credentials" },
+          "423": { description: "Account temporarily locked after too many failed attempts" },
+        },
+      },
+    },
+    "/api/auth/forgot-password": {
+      post: {
+        tags: ["auth"],
+        summary: "Request a one-time password reset token for an email",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: { email: { type: "string", format: "email" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Reset token issued (returned in the body in this build)" },
+        },
+      },
+    },
+    "/api/auth/reset-password": {
+      post: {
+        tags: ["auth"],
+        summary: "Set a new password using a one-time reset token",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token", "password"],
+                properties: {
+                  token: { type: "string" },
+                  password: { type: "string", minLength: 8 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Password updated" },
+          "400": { description: "Invalid or expired reset token" },
+        },
+      },
+    },
+    "/api/auth/verify-email": {
+      post: {
+        tags: ["auth"],
+        summary: "Verify an email address with a one-time verification token",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token"],
+                properties: { token: { type: "string" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Email verified" },
+          "400": { description: "Invalid or expired verification token" },
+        },
+      },
+    },
+    "/api/auth/email-verification": {
+      post: {
+        tags: ["auth"],
+        summary: "Issue a fresh email verification token for the authenticated user",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "201": { description: "Verification token issued" },
+          "401": { description: "Unauthenticated" },
         },
       },
     },

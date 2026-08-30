@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { creatorService } from "../../creators/services/creator.service.js"
+import { userService } from "../../users/services/user.service.js"
 import { walletRepository } from "../../wallet/repositories/wallet.repository.js"
 import { decryptSecret, requireCustodialSecrets } from "../../wallet/services/wallet-crypto.service.js"
 import type { Wallet } from "../../wallet/types/wallet.types.js"
@@ -56,7 +57,18 @@ export const creatorPayoutService = {
     assetCode: TipAssetCode,
     idempotencyKey: string
   ): Promise<CreatorPayoutResponse> {
-    const creator = await findOwnCreatorProfile(userId)
+    const [creator, account] = await Promise.all([
+      findOwnCreatorProfile(userId),
+      userService.findById(userId),
+    ])
+
+    if (account && !account.emailVerified) {
+      throw new AppError(
+        403,
+        "EMAIL_NOT_VERIFIED",
+        "Verify your email address before withdrawing funds"
+      )
+    }
 
     const existing = await creatorPayoutRepository.findByIdempotencyKey(creator.id, idempotencyKey)
     if (existing) {

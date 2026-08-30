@@ -28,5 +28,25 @@ export const logoutSchema = z.object({
   refreshToken: z.string().min(1).optional(),
 })
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+})
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "token is required"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters long")
+    .regex(/[A-Za-z]/, "Password must contain at least one letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+})
+
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, "token is required"),
+})
+
 export type RefreshTokenRequest = z.infer<typeof refreshTokenSchema>
 export type LogoutRequest = z.infer<typeof logoutSchema>
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordSchema>
+export type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>
+export type VerifyEmailRequest = z.infer<typeof verifyEmailSchema>

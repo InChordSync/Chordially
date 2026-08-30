@@ -8,17 +8,22 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  passwordHash   String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  creatorProfile CreatorProfile?
-  fanProfile     FanProfile?
-  wallet         Wallet?
-  tipsSent       Tip[]
-  walletDeposits WalletDeposit[]
-  refreshTokens  RefreshToken[]
+  id                   String                  @id @default(cuid())
+  email                String                  @unique
+  passwordHash         String
+  emailVerified        Boolean                 @default(false)
+  failedLoginAttempts  Int                     @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  creatorProfile       CreatorProfile?
+  fanProfile           FanProfile?
+  wallet               Wallet?
+  tipsSent             Tip[]
+  walletDeposits       WalletDeposit[]
+  refreshTokens        RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens  PasswordResetToken[]
 }
 
 model CreatorProfile {

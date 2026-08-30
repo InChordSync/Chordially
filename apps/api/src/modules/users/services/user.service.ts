@@ -13,4 +13,11 @@ export const userService = {
   create(input: CreateUserInput): Promise<User> {
     return userRepository.create(input)
   },
+
+  update(
+    id: string,
+    data: Partial<Pick<User, "emailVerified" | "failedLoginAttempts" | "lockedUntil" | "passwordHash">>
+  ): Promise<User> {
+    return userRepository.update(id, data)
+  },
 }
