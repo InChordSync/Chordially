@@ -7,6 +7,8 @@ export const streamsRouter: Router = Router()
 
 streamsRouter.post("/", requireAuth, streamController.start)
 streamsRouter.post("/:id/end", requireAuth, streamController.end)
+// Tip feed is intentionally private: only an authenticated user may subscribe
+// to a stream's live tip SSE stream.
 streamsRouter.get("/:id/tips", requireAuth, streamController.streamTips)
 streamsRouter.put("/:id/payout-config", requireAuth, streamPayoutConfigController.set)
 streamsRouter.get("/:id/payout-config", requireAuth, streamPayoutConfigController.get)

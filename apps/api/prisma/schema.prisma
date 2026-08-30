@@ -204,6 +204,28 @@ model CreatorPayout {
   @@index([creatorId])
 }
 
+// A generic, database-backed idempotency record store. Unlike the
+// request-scoped in-memory Map it replaces, these rows survive a restart
+// and are shared across every API instance, so a retried or duplicated
+// request can never trigger the same money movement twice (see
+// modules/payments/services/payment-idempotency-guard.service.ts).
+model TransactionIdempotencyRecord {
+  id           String   @id @default(cuid())
+  key          String
+  // Owner namespacing: the idempotency key is unique per owner so two
+  // different users can never collide, mirroring Tip/CreatorPayout.
+  ownerId      String
+  requestPath  String
+  responseBody String   @default("{}")
+  statusCode   Int      @default(200)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([ownerId, key])
+  @@index([key])
+}
+
 // A fan's fiat-to-Stellar deposit via a SEP-24 anchor, kept as its own
 // audit trail distinct from Tip since this is platform money movement
 // (real fiat rails), not a tip. Status mirrors SEP-24's own transaction

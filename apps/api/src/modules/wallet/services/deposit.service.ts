@@ -3,6 +3,7 @@ import { authenticateWithAnchor } from "../../../shared/anchor/sep24-client.js"
 import { AppError } from "../../../shared/errors/app-error.js"
 import { logger } from "../../../shared/logger/logger.js"
 import type { TipAssetCode } from "../../../shared/stellar/assets.js"
+import { paymentIdempotencyGuard } from "../../payments/services/payment-idempotency-guard.service.js"
 import { depositRepository } from "../repositories/deposit.repository.js"
 import { walletRepository } from "../repositories/wallet.repository.js"
 import type { WalletDepositResponse } from "../types/deposit.types.js"
@@ -20,7 +21,21 @@ export const depositService = {
    * this was the testnet Friendbot faucet, which has no production
    * equivalent.
    */
-  async initiateDeposit(userId: string, assetCode: TipAssetCode): Promise<WalletDepositResponse> {
+  async initiateDeposit(
+    userId: string,
+    assetCode: TipAssetCode,
+    idempotencyKey?: string
+  ): Promise<WalletDepositResponse> {
+    // Deduplicate retried client requests via the database-backed idempotency
+    // guard. If the same key was already processed, replay the recorded
+    // response instead of starting a second (real-money) deposit.
+    if (idempotencyKey) {
+      const check = await paymentIdempotencyGuard.checkOrLockKey(idempotencyKey, userId)
+      if (check.isDuplicate) {
+        return check.previousResponse as unknown as WalletDepositResponse
+      }
+    }
+
     const wallet = await walletRepository.findByUserId(userId)
     if (!wallet) {
       throw new AppError(404, "WALLET_NOT_FOUND", "No wallet exists for this user")
@@ -69,7 +84,19 @@ export const depositService = {
       interactiveUrl: interactive.url,
     })
 
-    return toWalletDepositResponse(deposit)
+    const response = toWalletDepositResponse(deposit)
+
+    if (idempotencyKey) {
+      await paymentIdempotencyGuard.saveKeyRecord({
+        key: idempotencyKey,
+        ownerId: userId,
+        requestPath: "/api/wallet/deposits",
+        responseBody: response as unknown as Record<string, unknown>,
+        statusCode: 201,
+      })
+    }
+
+    return response
   },
 
   async listDepositsForUser(userId: string): Promise<WalletDepositResponse[]> {

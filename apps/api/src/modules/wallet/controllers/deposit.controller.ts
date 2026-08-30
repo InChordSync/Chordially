@@ -8,7 +8,11 @@ export const depositController = {
       const userId = req.userId!
       const input = createDepositSchema.parse(req.body)
 
-      const deposit = await depositService.initiateDeposit(userId, input.assetCode)
+      const deposit = await depositService.initiateDeposit(
+        userId,
+        input.assetCode,
+        input.idempotencyKey
+      )
 
       res.status(201).json(deposit)
     } catch (error) {

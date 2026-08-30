@@ -99,6 +99,32 @@ describe("POST /api/wallet/deposits", () => {
     expect(res.body.error.code).toBe("WALLET_NOT_CUSTODIAL")
     expect(anchorClient.requestChallenge).not.toHaveBeenCalled()
   })
+
+  it("is idempotent on a duplicate idempotencyKey — no second deposit or anchor interaction", async () => {
+    const { token, userId } = await registerAndLogin("deposit-dupe@test.com")
+    const idempotencyKey = crypto.randomUUID()
+
+    const first = await request(app)
+      .post("/api/wallet/deposits")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ assetCode: "USDC", idempotencyKey })
+
+    expect(first.status).toBe(201)
+    expect(first.body.id).toBeTruthy()
+
+    const second = await request(app)
+      .post("/api/wallet/deposits")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ assetCode: "USDC", idempotencyKey })
+
+    expect(second.body.id).toBe(first.body.id)
+    expect(anchorClient.requestChallenge).toHaveBeenCalledTimes(1)
+    expect(anchorClient.startInteractiveDeposit).toHaveBeenCalledTimes(1)
+
+    const stored = await prisma.walletDeposit.findMany({ where: { userId } })
+    expect(stored).toHaveLength(1)
+    expect(stored[0].id).toBe(first.body.id)
+  })
 })
 
 describe("GET /api/wallet/deposits and /api/wallet/deposits/:id", () => {
