@@ -2,11 +2,14 @@ import type { NextFunction, Request, Response } from "express"
 import { env } from "../../../shared/config/env.js"
 import { authService } from "../services/auth.service.js"
 import {
+  forgotPasswordSchema,
   loginSchema,
   logoutSchema,
   registerLinkedSchema,
   registerSchema,
   refreshTokenSchema,
+  resetPasswordSchema,
+  verifyEmailSchema,
 } from "../validators/auth.validators.js"
 
 const AUTH_TOKEN_COOKIE = "chordially.token"
@@ -69,6 +72,45 @@ export const authController = {
       const input = logoutSchema.parse(req.body ?? {})
       await authService.logout(req.userId!, input.refreshToken)
       res.status(200).json({ ok: true })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input = forgotPasswordSchema.parse(req.body)
+      const result = await authService.forgotPassword(input.email)
+      res.status(200).json(result)
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input = resetPasswordSchema.parse(req.body)
+      await authService.resetPassword(input.token, input.password)
+      res.status(200).json({ ok: true })
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async verifyEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const input = verifyEmailSchema.parse(req.body)
+      const result = await authService.verifyEmail(input.token)
+      res.status(200).json(result)
+    } catch (error) {
+      next(error)
+    }
+  },
+
+  async createEmailVerification(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await authService.createEmailVerification(req.userId!)
+      res.status(201).json(result)
     } catch (error) {
       next(error)
     }

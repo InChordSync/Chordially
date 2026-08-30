@@ -8,17 +8,22 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  passwordHash   String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  creatorProfile CreatorProfile?
-  fanProfile     FanProfile?
-  wallet         Wallet?
-  tipsSent       Tip[]
-  walletDeposits WalletDeposit[]
-  refreshTokens  RefreshToken[]
+  id                   String                  @id @default(cuid())
+  email                String                  @unique
+  passwordHash         String
+  emailVerified        Boolean                 @default(false)
+  failedLoginAttempts  Int                     @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  creatorProfile       CreatorProfile?
+  fanProfile           FanProfile?
+  wallet               Wallet?
+  tipsSent             Tip[]
+  walletDeposits       WalletDeposit[]
+  refreshTokens        RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens  PasswordResetToken[]
 }
 
 model CreatorProfile {
@@ -240,6 +245,37 @@ model RefreshToken {
   revokedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// One-time email verification token issued after register/register-linked.
+// Only the sha256 hash of the raw token is stored; the raw token is returned
+// once (in the response) and can never be re-derived from the database. A
+// token is single-use and expires after EMAIL_VERIFICATION_TTL.
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// One-time password reset token issued by forgot-password and consumed by
+// reset-password. Only the sha256 hash of the raw token is stored. A token is
+// single-use and expires after PASSWORD_RESET_TTL.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }
