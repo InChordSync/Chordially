@@ -17,6 +17,19 @@ export const depositRepository = {
     })
   },
 
+  findByUserIdPaginated(userId: string, page: number, pageSize: number): Promise<WalletDeposit[]> {
+    return prisma.walletDeposit.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    })
+  },
+
+  countByUserId(userId: string): Promise<number> {
+    return prisma.walletDeposit.count({ where: { userId } })
+  },
+
   updateStatus(
     id: string,
     data: { status: string; amountIn?: string | null; failureReason?: string | null }

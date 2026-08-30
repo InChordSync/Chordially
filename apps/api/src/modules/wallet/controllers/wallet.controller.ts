@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express"
 import { AppError } from "../../../shared/errors/app-error.js"
 import { issueWalletLinkChallenge } from "../../../shared/wallet-link/challenge.js"
+import { walletAuditLogger } from "../services/wallet-audit-logger.service.js"
 import { walletService } from "../services/wallet.service.js"
 
 export const walletController = {
@@ -20,6 +21,7 @@ export const walletController = {
       // The client needs the raw nonce to know exactly what bytes to sign;
       // `challenge` is the opaque token it hands back afterward so the
       // server can re-derive and verify against that same nonce.
+      walletAuditLogger.logWalletEvent(nonce, publicKey, "challenge_issued")
       res.status(200).json({ challenge, nonce })
     } catch (error) {
       next(error)
