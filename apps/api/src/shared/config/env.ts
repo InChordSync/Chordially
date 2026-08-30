@@ -54,6 +54,10 @@ const envSchema = z.object({
   // How long a tip can stay unresolved before reconciliation gives up and
   // dead-letters it as failed.
   RECONCILIATION_DEAD_LETTER_THRESHOLD_MS: z.coerce.number().int().positive().default(300_000),
+  // Optional cache endpoint used by the deployment readiness probe (e.g.
+  // redis://host:6379). When unset, the probe treats the app as having no
+  // external cache dependency and reports the cache subsystem healthy.
+  CACHE_URL: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

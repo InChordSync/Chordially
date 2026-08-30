@@ -25,3 +25,5 @@ export class SprintSnapshotWriterService {
     return markdown;
   }
 }
+
+export const sprintSnapshotWriterService = new SprintSnapshotWriterService();
