@@ -139,6 +139,9 @@ The API app is the main backend service for Chordially, built as an Express
 - `modules/fans` — fan profile persistence, consumed by `modules/users`.
 - `shared/middleware/auth.middleware.ts` — JWT bearer verification
   (`requireAuth`), used by authenticated routes.
+- `modules/dev` — a local mock API server toggle (`POST/GET /api/dev/mock/*`),
+  mounted **only** when `NODE_ENV=development`, for local UI development
+  without a live backend.
 
 **Future direction** (see Core Product Areas above): user/creator/fan profile
 APIs, payment request coordination with `packages/stellar`, and additional

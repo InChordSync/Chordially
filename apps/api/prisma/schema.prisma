@@ -8,17 +8,22 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  passwordHash   String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  creatorProfile CreatorProfile?
-  fanProfile     FanProfile?
-  wallet         Wallet?
-  tipsSent       Tip[]
-  walletDeposits WalletDeposit[]
-  refreshTokens  RefreshToken[]
+  id                   String                  @id @default(cuid())
+  email                String                  @unique
+  passwordHash         String
+  emailVerified        Boolean                 @default(false)
+  failedLoginAttempts  Int                     @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  creatorProfile       CreatorProfile?
+  fanProfile           FanProfile?
+  wallet               Wallet?
+  tipsSent             Tip[]
+  walletDeposits       WalletDeposit[]
+  refreshTokens        RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens  PasswordResetToken[]
 }
 
 model CreatorProfile {
@@ -39,6 +44,7 @@ model CreatorProfile {
   payoutShares StreamPayoutConfigPayee[]
   tipPayouts   TipPayout[]
   payouts      CreatorPayout[]
+  bookmarkedBy Bookmark[]
 }
 
 model FanProfile {
@@ -50,6 +56,7 @@ model FanProfile {
   genrePrefs  String   @default("[]")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  bookmarks   Bookmark[]
 }
 
 // Custodial Stellar wallet. The secret key never leaves this row in
@@ -247,6 +254,25 @@ model WalletDeposit {
   @@index([userId])
 }
 
+// A notification delivered to a recipient (fan or creator). The web/mobile
+// shells shipped without any backend to read from; this is the persistence
+// model behind GET /api/notifications and the mark-read endpoints.
+model Notification {
+  id          String   @id @default(cuid())
+  recipientId String
+  recipient   User     @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String?
+  type        String
+  title       String
+  body        String
+  metadata    String   @default("{}")
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([recipientId, read])
+}
+
 // Server-side session for the access/refresh token pair issued at
 // login/register. Only the sha256 hash of the raw refresh token is stored;
 // the raw token is returned once to the client and can never be re-derived
@@ -264,4 +290,18 @@ model RefreshToken {
   updatedAt DateTime  @updatedAt
 
   @@index([userId])
+}
+
+// A fan's saved reference to a creator — the backend behind mobile/web
+// "saved creators" lists. A fan can bookmark each creator at most once.
+model Bookmark {
+  id        String        @id @default(cuid())
+  fanId     String
+  fan       FanProfile    @relation(fields: [fanId], references: [id], onDelete: Cascade)
+  creatorId String
+  creator   CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([fanId, creatorId])
+  @@index([fanId])
 }

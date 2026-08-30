@@ -116,6 +116,89 @@ export const openapiSpec = {
         responses: {
           "200": { description: "Logged in, returns JWT token" },
           "401": { description: "Invalid credentials" },
+          "423": { description: "Account temporarily locked after too many failed attempts" },
+        },
+      },
+    },
+    "/api/auth/forgot-password": {
+      post: {
+        tags: ["auth"],
+        summary: "Request a one-time password reset token for an email",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: { email: { type: "string", format: "email" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Reset token issued (returned in the body in this build)" },
+        },
+      },
+    },
+    "/api/auth/reset-password": {
+      post: {
+        tags: ["auth"],
+        summary: "Set a new password using a one-time reset token",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token", "password"],
+                properties: {
+                  token: { type: "string" },
+                  password: { type: "string", minLength: 8 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Password updated" },
+          "400": { description: "Invalid or expired reset token" },
+        },
+      },
+    },
+    "/api/auth/verify-email": {
+      post: {
+        tags: ["auth"],
+        summary: "Verify an email address with a one-time verification token",
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token"],
+                properties: { token: { type: "string" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Email verified" },
+          "400": { description: "Invalid or expired verification token" },
+        },
+      },
+    },
+    "/api/auth/email-verification": {
+      post: {
+        tags: ["auth"],
+        summary: "Issue a fresh email verification token for the authenticated user",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "201": { description: "Verification token issued" },
+          "401": { description: "Unauthenticated" },
         },
       },
     },
@@ -255,6 +338,113 @@ export const openapiSpec = {
           "400": { description: "Invalid request body" },
           "401": { description: "Unauthorized" },
           "404": { description: "Creator not found" },
+        },
+      },
+    },
+    "/api/fans/me": {
+      get: {
+        tags: ["fans"],
+        summary: "Get the authenticated fan's profile",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "Fan profile" },
+          "401": { description: "Unauthorized" },
+          "404": { description: "Fan profile not found" },
+        },
+      },
+      patch: {
+        tags: ["fans"],
+        summary: "Update the authenticated fan's profile",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "Updated fan profile" },
+          "401": { description: "Unauthorized" },
+          "404": { description: "Fan profile not found" },
+        },
+      },
+    },
+    "/api/fans/me/bookmarks": {
+      get: {
+        tags: ["fans"],
+        summary: "List the authenticated fan's bookmarked creators",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "List of bookmarks" },
+          "401": { description: "Unauthorized" },
+        },
+      },
+      post: {
+        tags: ["fans"],
+        summary: "Bookmark a creator for the authenticated fan",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["creatorId"],
+                properties: { creatorId: { type: "string" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "Bookmark created" },
+          "400": { description: "Invalid request body" },
+          "401": { description: "Unauthorized" },
+          "404": { description: "Creator not found" },
+        },
+      },
+    },
+    "/api/fans/me/bookmarks/{creatorId}": {
+      delete: {
+        tags: ["fans"],
+        summary: "Remove a bookmark for the authenticated fan",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "creatorId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "204": { description: "Bookmark removed" },
+          "401": { description: "Unauthorized" },
+          "404": { description: "Bookmark not found" },
+        },
+      },
+    },
+    "/api/activity/stream": {
+      get: {
+        tags: ["activity"],
+        summary: "List a creator/user's activity stream, paginated",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "creatorId",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+          },
+          {
+            name: "page",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, default: 20 },
+          },
+        ],
+        responses: {
+          "200": { description: "Paginated activity items" },
+          "401": { description: "Unauthorized" },
         },
       },
     },

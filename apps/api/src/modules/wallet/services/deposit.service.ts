@@ -6,7 +6,7 @@ import type { TipAssetCode } from "../../../shared/stellar/assets.js"
 import { paymentIdempotencyGuard } from "../../payments/services/payment-idempotency-guard.service.js"
 import { depositRepository } from "../repositories/deposit.repository.js"
 import { walletRepository } from "../repositories/wallet.repository.js"
-import type { WalletDepositResponse } from "../types/deposit.types.js"
+import type { PaginatedDeposits, WalletDepositResponse } from "../types/deposit.types.js"
 import { toWalletDepositResponse } from "../types/deposit.types.js"
 import { decryptSecret, requireCustodialSecrets } from "./wallet-crypto.service.js"
 
@@ -99,9 +99,24 @@ export const depositService = {
     return response
   },
 
-  async listDepositsForUser(userId: string): Promise<WalletDepositResponse[]> {
-    const deposits = await depositRepository.findByUserId(userId)
-    return deposits.map(toWalletDepositResponse)
+  async listDepositsForUser(userId: string, page = 1, pageSize = 20): Promise<PaginatedDeposits> {
+    const normalizedPage = Math.max(1, Math.floor(page))
+    const normalizedPageSize = Math.min(100, Math.max(1, Math.floor(pageSize)))
+
+    const [deposits, total] = await Promise.all([
+      depositRepository.findByUserIdPaginated(userId, normalizedPage, normalizedPageSize),
+      depositRepository.countByUserId(userId),
+    ])
+
+    const totalPages = Math.ceil(total / normalizedPageSize)
+    return {
+      items: deposits.map(toWalletDepositResponse),
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      total,
+      totalPages,
+      hasNextPage: normalizedPage < totalPages,
+    }
   },
 
   /**

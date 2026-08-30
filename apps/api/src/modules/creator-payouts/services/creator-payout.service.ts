@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { creatorService } from "../../creators/services/creator.service.js"
+import { userService } from "../../users/services/user.service.js"
 import { walletRepository } from "../../wallet/repositories/wallet.repository.js"
 import { decryptSecret, requireCustodialSecrets } from "../../wallet/services/wallet-crypto.service.js"
 import type { Wallet } from "../../wallet/types/wallet.types.js"
@@ -15,6 +16,7 @@ import { paymentIdempotencyGuard } from "../../payments/services/payment-idempot
 import {
   toCreatorPayoutResponse,
   type CreatorPayoutResponse,
+  type PaginatedCreatorPayouts,
 } from "../types/creator-payout.types.js"
 
 const MAX_SUBMISSION_ATTEMPTS = 3
@@ -56,7 +58,18 @@ export const creatorPayoutService = {
     assetCode: TipAssetCode,
     idempotencyKey: string
   ): Promise<CreatorPayoutResponse> {
-    const creator = await findOwnCreatorProfile(userId)
+    const [creator, account] = await Promise.all([
+      findOwnCreatorProfile(userId),
+      userService.findById(userId),
+    ])
+
+    if (account && !account.emailVerified) {
+      throw new AppError(
+        403,
+        "EMAIL_NOT_VERIFIED",
+        "Verify your email address before withdrawing funds"
+      )
+    }
 
     // Database-backed idempotency guard (shared across instances): replay the
     // recorded response for a retried key. The CreatorPayout unique constraint
@@ -155,10 +168,29 @@ export const creatorPayoutService = {
     return toCreatorPayoutResponse(payout)
   },
 
-  async listPayoutsForCreator(userId: string): Promise<CreatorPayoutResponse[]> {
+  async listPayoutsForCreator(
+    userId: string,
+    page = 1,
+    pageSize = 20
+  ): Promise<PaginatedCreatorPayouts> {
     const creator = await findOwnCreatorProfile(userId)
-    const payouts = await creatorPayoutRepository.findByCreatorId(creator.id)
-    return payouts.map(toCreatorPayoutResponse)
+    const normalizedPage = Math.max(1, Math.floor(page))
+    const normalizedPageSize = Math.min(100, Math.max(1, Math.floor(pageSize)))
+
+    const [payouts, total] = await Promise.all([
+      creatorPayoutRepository.findByCreatorIdPaginated(creator.id, normalizedPage, normalizedPageSize),
+      creatorPayoutRepository.countByCreatorId(creator.id),
+    ])
+
+    const totalPages = Math.ceil(total / normalizedPageSize)
+    return {
+      items: payouts.map(toCreatorPayoutResponse),
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      total,
+      totalPages,
+      hasNextPage: normalizedPage < totalPages,
+    }
   },
 
   /**
