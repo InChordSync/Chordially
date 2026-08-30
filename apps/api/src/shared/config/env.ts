@@ -54,6 +54,10 @@ const envSchema = z.object({
   TIP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10_000),
   TIP_RATE_LIMIT_PER_FAN: z.coerce.number().int().positive().default(5),
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),
+  // Lenient baseline throttle for the intentionally public creator directory
+  // profile endpoint, to curb unauthenticated scraping/enumeration.
+  CREATOR_PROFILE_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  CREATOR_PROFILE_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(120),
   RECONCILIATION_ENABLED: z.coerce.boolean().default(true),
   RECONCILIATION_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   // How long a tip can sit in "submitted" before reconciliation will look at

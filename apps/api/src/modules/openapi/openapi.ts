@@ -341,6 +341,113 @@ export const openapiSpec = {
         },
       },
     },
+    "/api/fans/me": {
+      get: {
+        tags: ["fans"],
+        summary: "Get the authenticated fan's profile",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "Fan profile" },
+          "401": { description: "Unauthorized" },
+          "404": { description: "Fan profile not found" },
+        },
+      },
+      patch: {
+        tags: ["fans"],
+        summary: "Update the authenticated fan's profile",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "Updated fan profile" },
+          "401": { description: "Unauthorized" },
+          "404": { description: "Fan profile not found" },
+        },
+      },
+    },
+    "/api/fans/me/bookmarks": {
+      get: {
+        tags: ["fans"],
+        summary: "List the authenticated fan's bookmarked creators",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "List of bookmarks" },
+          "401": { description: "Unauthorized" },
+        },
+      },
+      post: {
+        tags: ["fans"],
+        summary: "Bookmark a creator for the authenticated fan",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["creatorId"],
+                properties: { creatorId: { type: "string" } },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "Bookmark created" },
+          "400": { description: "Invalid request body" },
+          "401": { description: "Unauthorized" },
+          "404": { description: "Creator not found" },
+        },
+      },
+    },
+    "/api/fans/me/bookmarks/{creatorId}": {
+      delete: {
+        tags: ["fans"],
+        summary: "Remove a bookmark for the authenticated fan",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "creatorId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "204": { description: "Bookmark removed" },
+          "401": { description: "Unauthorized" },
+          "404": { description: "Bookmark not found" },
+        },
+      },
+    },
+    "/api/activity/stream": {
+      get: {
+        tags: ["activity"],
+        summary: "List a creator/user's activity stream, paginated",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "creatorId",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+          },
+          {
+            name: "page",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, default: 20 },
+          },
+        ],
+        responses: {
+          "200": { description: "Paginated activity items" },
+          "401": { description: "Unauthorized" },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
