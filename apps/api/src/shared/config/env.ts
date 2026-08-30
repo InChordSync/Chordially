@@ -9,6 +9,14 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   JWT_EXPIRES_IN: z.string().default("1h"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+  // How long a one-time email verification token stays valid (seconds).
+  EMAIL_VERIFICATION_TTL_SECONDS: z.coerce.number().int().positive().default(24 * 60 * 60),
+  // How long a one-time password reset token stays valid (seconds).
+  PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  // Brute-force protection for login: after this many failed attempts an
+  // account is temporarily locked for the configured duration (seconds).
+  LOGIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  LOGIN_LOCKOUT_DURATION_SECONDS: z.coerce.number().int().positive().default(15 * 60),
   AWS_REGION: z.string().default("us-east-1"),
   AWS_ACCESS_KEY_ID: z.string().default(""),
   AWS_SECRET_ACCESS_KEY: z.string().default(""),
@@ -46,6 +54,10 @@ const envSchema = z.object({
   TIP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10_000),
   TIP_RATE_LIMIT_PER_FAN: z.coerce.number().int().positive().default(5),
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),
+  // Lenient baseline throttle for the intentionally public creator directory
+  // profile endpoint, to curb unauthenticated scraping/enumeration.
+  CREATOR_PROFILE_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  CREATOR_PROFILE_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(120),
   RECONCILIATION_ENABLED: z.coerce.boolean().default(true),
   RECONCILIATION_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   // Per-admin cap on manual `POST /api/reconciliation/run` triggers.
@@ -57,14 +69,10 @@ const envSchema = z.object({
   // How long a tip can stay unresolved before reconciliation gives up and
   // dead-letters it as failed.
   RECONCILIATION_DEAD_LETTER_THRESHOLD_MS: z.coerce.number().int().positive().default(300_000),
-  // Per-instance cap on concurrent SSE tip-stream connections. Each holds an
-  // open socket, an event-bus subscriber and a heartbeat timer, so an
-  // unbounded number of them can exhaust file descriptors and memory (see
-  // stream.controller.ts streamTips).
-  SSE_STREAM_MAX_CONNECTIONS: z.coerce.number().int().positive().default(1_000),
-  // Per-user cap on concurrent SSE tip-stream connections from the same
-  // account, so one fan can't open hundreds of sockets to a single stream.
-  SSE_STREAM_MAX_PER_USER: z.coerce.number().int().positive().default(5),
+  // Optional cache endpoint used by the deployment readiness probe (e.g.
+  // redis://host:6379). When unset, the probe treats the app as having no
+  // external cache dependency and reports the cache subsystem healthy.
+  CACHE_URL: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

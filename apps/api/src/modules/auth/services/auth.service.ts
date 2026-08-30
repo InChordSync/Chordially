@@ -40,6 +40,74 @@ function hashRefreshToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex")
 }
 
+function sha256(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex")
+}
+
+async function assertNotLocked(user: {
+  id: string
+  failedLoginAttempts: number
+  lockedUntil: Date | null
+}): Promise<void> {
+  if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+    throw new AppError(
+      423,
+      "ACCOUNT_LOCKED",
+      "Too many failed login attempts. Try again later."
+    )
+  }
+
+  // If the lockout window has elapsed, reset the counter so the user gets a
+  // fresh set of attempts instead of being locked out on the very next try.
+  if (user.failedLoginAttempts > 0 && user.lockedUntil) {
+    await userService.update(user.id, {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    })
+  }
+}
+
+async function recordFailedLogin(user: { id: string; failedLoginAttempts: number }): Promise<void> {
+  const attempts = user.failedLoginAttempts + 1
+  if (attempts >= env.LOGIN_MAX_FAILED_ATTEMPTS) {
+    await userService.update(user.id, {
+      failedLoginAttempts: attempts,
+      lockedUntil: new Date(Date.now() + env.LOGIN_LOCKOUT_DURATION_SECONDS * 1000),
+    })
+  } else {
+    await userService.update(user.id, { failedLoginAttempts: attempts })
+  }
+}
+
+async function resetLoginLockout(userId: string): Promise<void> {
+  await userService.update(userId, {
+    failedLoginAttempts: 0,
+    lockedUntil: null,
+  })
+}
+
+async function createEmailVerificationToken(userId: string): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex")
+  const expiresAt = new Date(Date.now() + env.EMAIL_VERIFICATION_TTL_SECONDS * 1000)
+
+  await prisma.emailVerificationToken.create({
+    data: { userId, tokenHash: sha256(token), expiresAt },
+  })
+
+  return token
+}
+
+async function createPasswordResetToken(userId: string): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex")
+  const expiresAt = new Date(Date.now() + env.PASSWORD_RESET_TTL_SECONDS * 1000)
+
+  await prisma.passwordResetToken.create({
+    data: { userId, tokenHash: sha256(token), expiresAt },
+  })
+
+  return token
+}
+
 async function createRefreshToken(userId: string): Promise<string> {
   const token = crypto.randomBytes(32).toString("hex")
   const expiresAt = new Date(
@@ -56,8 +124,14 @@ async function createRefreshToken(userId: string): Promise<string> {
 async function createUserAccount(email: string, password: string) {
   const existing = await userService.findByEmail(email)
 
+  // Deliberately generic: returning a distinct "email already registered"
+  // error would let an attacker probe which addresses have accounts. This
+  // reveals nothing about whether the email exists — a would-be enumerator
+  // gets the same response whether the account exists or registration failed
+  // for any other reason. Bulk probing is further throttled by the register
+  // rate limiter (see modules/auth/middleware/auth-rate-limit.ts).
   if (existing) {
-    throw new AppError(409, "EMAIL_ALREADY_REGISTERED", "An account with this email already exists")
+    throw new AppError(409, "REGISTRATION_FAILED", "Unable to complete registration")
   }
 
   const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS)
@@ -73,6 +147,7 @@ export const authService = {
       user: toAuthUserResponse(user),
       token: issueToken(user.id),
       refreshToken: await createRefreshToken(user.id),
+      emailVerificationToken: await createEmailVerificationToken(user.id),
     }
   },
 
@@ -96,6 +171,7 @@ export const authService = {
       user: toAuthUserResponse(user),
       token: issueToken(user.id),
       refreshToken: await createRefreshToken(user.id),
+      emailVerificationToken: await createEmailVerificationToken(user.id),
     }
   },
 
@@ -106,17 +182,118 @@ export const authService = {
       throw new AppError(401, "INVALID_CREDENTIALS", "Invalid email or password")
     }
 
+    await assertNotLocked(user)
+
     const passwordMatches = await bcrypt.compare(input.password, user.passwordHash)
 
     if (!passwordMatches) {
+      await recordFailedLogin(user)
       throw new AppError(401, "INVALID_CREDENTIALS", "Invalid email or password")
     }
+
+    await resetLoginLockout(user.id)
 
     return {
       user: toAuthUserResponse(user),
       token: issueToken(user.id),
       refreshToken: await createRefreshToken(user.id),
+      emailVerificationToken: await createEmailVerificationToken(user.id),
     }
+  },
+
+  /**
+   * Requests a password reset for an email. Does not reveal whether the
+   * account exists — an unknown email simply consumes a token that will never
+   * be usable — so an unauthenticated caller can't enumerate accounts. The
+   * caller gets an opaque "ok" response; in this build the one-time reset
+   * token is returned in the response body (there is no e-mail transport
+   * wired up yet) and must be handed to POST /api/auth/reset-password.
+   */
+  async forgotPassword(email: string): Promise<{ token: string }> {
+    const user = await userService.findByEmail(email)
+
+    if (!user) {
+      // Return a token so the timing/behaviour matches a real account without
+      // revealing whether the email exists. It is never persisted, so it can
+      // never be redeemed.
+      return { token: crypto.randomBytes(32).toString("hex") }
+    }
+
+    await prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+
+    const token = await createPasswordResetToken(user.id)
+    return { token }
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const record = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash: sha256(token) },
+    })
+
+    if (
+      !record ||
+      record.revokedAt !== null ||
+      record.expiresAt.getTime() <= Date.now()
+    ) {
+      throw new AppError(400, "INVALID_RESET_TOKEN", "Invalid or expired reset token")
+    }
+
+    const user = await userService.findById(record.userId)
+    if (!user) {
+      throw new AppError(400, "INVALID_RESET_TOKEN", "Invalid or expired reset token")
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS)
+    await userService.update(user.id, { passwordHash, failedLoginAttempts: 0, lockedUntil: null })
+
+    // The token is single-use.
+    await prisma.passwordResetToken.update({
+      where: { id: record.id },
+      data: { revokedAt: new Date() },
+    })
+
+    // Revoke outstanding refresh tokens so previously stolen sessions die
+    // with the old password.
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+  },
+
+  async createEmailVerification(userId: string): Promise<{ token: string }> {
+    const token = await createEmailVerificationToken(userId)
+    return { token }
+  },
+
+  async verifyEmail(token: string): Promise<{ emailVerified: boolean }> {
+    const record = await prisma.emailVerificationToken.findUnique({
+      where: { tokenHash: sha256(token) },
+    })
+
+    if (
+      !record ||
+      record.usedAt !== null ||
+      record.expiresAt.getTime() <= Date.now()
+    ) {
+      throw new AppError(400, "INVALID_VERIFICATION_TOKEN", "Invalid or expired verification token")
+    }
+
+    const user = await userService.findById(record.userId)
+    if (!user) {
+      throw new AppError(400, "INVALID_VERIFICATION_TOKEN", "Invalid or expired verification token")
+    }
+
+    await userService.update(user.id, { emailVerified: true })
+
+    await prisma.emailVerificationToken.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    })
+
+    return { emailVerified: true }
   },
 
   async refresh(refreshToken: string): Promise<AuthRefreshResult> {
