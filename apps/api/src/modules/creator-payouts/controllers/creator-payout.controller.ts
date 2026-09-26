@@ -1,59 +1,46 @@
-import type { NextFunction, Request, Response } from "express"
-import { creatorPayoutService } from "../services/creator-payout.service.js"
-import { createCreatorPayoutSchema } from "../validators/creator-payout.validators.js"
+import { Controller, Get, Post, Param, Body, Req, Res, Next } from '@nestjs/common';
+import type { Request, Response, NextFunction } from 'express';
+import { creatorPayoutService } from "../services/creator-payout.service.js";
+import { createCreatorPayoutSchema } from "../validators/creator-payout.validators.js";
 
-function parsePositiveInt(value: unknown, fallback: number): number {
-  if (typeof value !== "string" || value.trim() === "") {
-    return fallback
-  }
-  const parsed = Number.parseInt(value, 10)
-  if (Number.isNaN(parsed) || parsed < 1) {
-    return fallback
-  }
-  return parsed
-}
-
-export const creatorPayoutController = {
-  async create(req: Request, res: Response, next: NextFunction): Promise<void> {
+@Controller('creator-payouts')
+export class CreatorPayoutController {
+  @Post()
+  async create(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = req.userId!
-      const input = createCreatorPayoutSchema.parse(req.body)
-
+      const userId = (req as any).userId!;
+      const input = createCreatorPayoutSchema.parse(body);
       const payout = await creatorPayoutService.initiatePayout(
         userId,
         input.amount,
         input.assetCode,
         input.idempotencyKey
-      )
-
-      res.status(201).json(payout)
+      );
+      return res.status(201).json(payout);
     } catch (error) {
-      next(error)
+      next(error);
     }
-  },
+  }
 
-  async list(req: Request, res: Response, next: NextFunction): Promise<void> {
+  @Get()
+  async list(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = req.userId!
-      const page = parsePositiveInt(req.query.page, 1)
-      const pageSize = parsePositiveInt(req.query.pageSize, 20)
-      const payouts = await creatorPayoutService.listPayoutsForCreator(userId, page, pageSize)
-      res.status(200).json(payouts)
+      const userId = (req as any).userId!;
+      const payouts = await creatorPayoutService.listPayoutsForCreator(userId);
+      return res.status(200).json(payouts);
     } catch (error) {
-      next(error)
+      next(error);
     }
-  },
+  }
 
-  async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
+  @Get(':id')
+  async getById(@Param('id') id: string, @Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = req.userId!
-      const { id } = req.params
-
-      const payout = await creatorPayoutService.refreshPayoutStatus(userId, id!)
-
-      res.status(200).json(payout)
+      const userId = (req as any).userId!;
+      const payout = await creatorPayoutService.refreshPayoutStatus(userId, id);
+      return res.status(200).json(payout);
     } catch (error) {
-      next(error)
+      next(error);
     }
-  },
+  }
 }
