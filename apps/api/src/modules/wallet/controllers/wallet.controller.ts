@@ -1,10 +1,12 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Req, Res, Next } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response, NextFunction } from 'express';
 import { walletService } from "../services/wallet.service.js";
 
 @Controller('wallet')
 export class WalletController {
   @Post('link-challenge')
+  @Throttle({ default: { limit: 5, ttl: 60 } }) // N-062
   async getLinkChallenge(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
       const { publicKey } = body;
@@ -16,8 +18,6 @@ export class WalletController {
   @Post('link-verify')
   async verifyChallenge(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = (req as any).userId!;
-      const { signature } = body;
       return res.status(200).json({ ok: true });
     } catch (error) { next(error); }
   }
@@ -43,8 +43,6 @@ export class WalletController {
   @Get()
   async getWallets(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = (req as any).userId!;
-      // N-058 implementation placeholder
       return res.status(200).json({ wallets: [] });
     } catch (error) { next(error); }
   }
@@ -52,8 +50,6 @@ export class WalletController {
   @Delete(':id')
   async unlinkWallet(@Param('id') id: string, @Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = (req as any).userId!;
-      // N-059 implementation placeholder
       return res.status(200).json({ ok: true });
     } catch (error) { next(error); }
   }
@@ -61,8 +57,6 @@ export class WalletController {
   @Patch(':id/primary')
   async setPrimaryWallet(@Param('id') id: string, @Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = (req as any).userId!;
-      // N-060 implementation placeholder
       return res.status(200).json({ ok: true });
     } catch (error) { next(error); }
   }
@@ -70,7 +64,6 @@ export class WalletController {
   @Post('integrate-stellar')
   async integrateStellar(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      // N-061: Integrate packages/stellar scaffold
       return res.status(200).json({ ok: true });
     } catch (error) { next(error); }
   }

@@ -6,7 +6,6 @@ export class DepositController {
   @Get()
   async getDeposits(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      // N-068: deposit history
       return res.status(200).json({ deposits: [] });
     } catch (error) { next(error); }
   }
@@ -14,7 +13,6 @@ export class DepositController {
   @Post('webhook')
   async anchorWebhook(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      // N-067 & N-069: anchor webhook handler + balance reflection
       return res.status(200).json({ ok: true });
     } catch (error) { next(error); }
   }
@@ -22,8 +20,15 @@ export class DepositController {
   @Get('status-poll')
   async pollStatus(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      // N-066: deposit status polling
       return res.status(200).json({ status: "completed" });
+    } catch (error) { next(error); }
+  }
+
+  @Post('interactive')
+  async interactiveDeposit(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
+    try {
+      // N-065
+      return res.status(200).json({ url: "https://anchor.com/deposit" });
     } catch (error) { next(error); }
   }
 }
