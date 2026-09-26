@@ -1,3 +1,5 @@
+import type { CreatorProfileResponse } from "@chordially/shared"
+
 export interface CreatorProfile {
   id: string
   userId: string
@@ -28,7 +30,7 @@ export interface UpdateCreatorInput {
   location?: string
 }
 
-export interface CreatorResponse {
+export interface CreatorResponse extends CreatorProfileResponse {
   id: string
   userId: string
   displayName: string
@@ -38,6 +40,8 @@ export interface CreatorResponse {
   genre: string | null
   location: string | null
   isVerified: boolean
+  followerCount: number
+  trackCount: number
   createdAt: string
   updatedAt: string
 }
@@ -53,6 +57,8 @@ export function toCreatorResponse(profile: CreatorProfile): CreatorResponse {
     genre: profile.genre,
     location: profile.location,
     isVerified: profile.isVerified,
+    followerCount: 0,
+    trackCount: 0,
     createdAt: profile.createdAt.toISOString(),
     updatedAt: profile.updatedAt.toISOString(),
   }
