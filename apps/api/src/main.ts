@@ -8,6 +8,7 @@ import { logger } from './shared/logger/logger.js';
 import { reconciliationService } from './modules/reconciliation/services/reconciliation.service.js';
 import helmet from 'helmet';
 import cors from 'cors';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const expressApp = createApp();
@@ -17,6 +18,15 @@ async function bootstrap() {
   
   app.use(helmet());
   app.use(cors({ origin: true, credentials: true }));
+  
+  const config = new DocumentBuilder()
+    .setTitle('Chordially API')
+    .setDescription('NestJS API')
+    .setVersion('1.0')
+    .addBearerAuth() // N-117
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document); // N-116
   
   await app.listen(env.PORT, () => {
     logger.info(`NestJS API listening on port ${env.PORT}`);
