@@ -4,8 +4,10 @@ import { WalletModule } from './modules/wallet/wallet.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CreatorModule } from './modules/creators/creator.module.js';
 import { CreatorPayoutModule } from './modules/creator-payouts/creator-payout.module.js';
+import { TipModule } from './modules/tips/tip.module.js';
+import { StreamModule } from './modules/streams/stream.module.js';
 
 @Module({
-  imports: [UserModule, WalletModule, AuthModule, CreatorModule, CreatorPayoutModule],
+  imports: [UserModule, WalletModule, AuthModule, CreatorModule, CreatorPayoutModule, TipModule, StreamModule],
 })
 export class AppModule {}
