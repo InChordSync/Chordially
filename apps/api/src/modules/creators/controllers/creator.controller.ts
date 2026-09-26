@@ -1,38 +1,42 @@
-import type { NextFunction, Request, Response } from "express"
-import { creatorRepository } from "../repositories/creator.repository.js"
-import { searchCreatorProfiles } from "../services/creator-search-index.service.js"
-import { creatorService } from "../services/creator.service.js"
-import { toCreatorResponse } from "../types/creator.types.js"
-import { AppError } from "../../../shared/errors/app-error.js"
+import { Controller, Get, Post, Patch, Param, Body, Req, Res, Next } from '@nestjs/common';
+import type { Request, Response, NextFunction } from 'express';
+import { creatorService } from "../services/creator.service.js";
+import { toCreatorResponse } from "../types/creator.types.js";
+import { createCreatorProfileSchema, updateCreatorProfileSchema } from "../validators/creator.validators.js";
 
-export const creatorController = {
-  async getBySlug(req: Request, res: Response, next: NextFunction): Promise<void> {
+@Controller('creators')
+export class CreatorController {
+  @Post()
+  async create(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const { slug } = req.params
-      const profile = await creatorService.findBySlug(slug!)
-
-      if (!profile) {
-        throw new AppError(404, "CREATOR_NOT_FOUND", "Creator profile not found")
-      }
-
-      res.status(200).json(toCreatorResponse(profile))
+      const userId = (req as any).userId!;
+      const input = createCreatorProfileSchema.parse(body);
+      const profile = await creatorService.createCreatorProfile(userId, input);
+      return res.status(201).json(toCreatorResponse(profile));
     } catch (error) {
-      next(error)
+      next(error);
     }
-  },
+  }
 
-  async getSearch(req: Request, res: Response, next: NextFunction): Promise<void> {
+  @Patch(':id')
+  async update(@Param('id') id: string, @Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const q = typeof req.query.q === "string" ? req.query.q : undefined
-      const genre = typeof req.query.genre === "string" ? req.query.genre : undefined
-      const location = typeof req.query.location === "string" ? req.query.location : undefined
-      // liveOnly is a discover param with no schema field behind it yet, so
-      // it's accepted but intentionally treated as a no-op filter here.
-      const profiles = await creatorRepository.search({ q, genre, location })
-
-      res.status(200).json(searchCreatorProfiles(profiles.map(toCreatorResponse), q))
+      const userId = (req as any).userId!;
+      const input = updateCreatorProfileSchema.parse(body);
+      const profile = await creatorService.updateCreatorProfile(id, input, userId);
+      return res.status(200).json(toCreatorResponse(profile));
     } catch (error) {
-      next(error)
+      next(error);
     }
-  },
+  }
+
+  @Get(':slug')
+  async getBySlug(@Param('slug') slug: string, @Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
+    try {
+      const profile = await creatorService.findBySlug(slug);
+      return res.status(200).json(profile ? toCreatorResponse(profile) : null);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
