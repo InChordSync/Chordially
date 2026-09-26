@@ -1,6 +1,7 @@
 import { Controller, Get, Patch, Post, Body, Req, Res, Next, Param } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 import { updateMeSchema } from "@chordially/shared";
+import { computeCreatorCompleteness, computeFanCompleteness } from "@chordially/shared";
 import { creatorService } from "../../creators/services/creator.service.js";
 import { fanService } from "../../fans/services/fan.service.js";
 import { toCreatorResponse } from "../../creators/types/creator.types.js";
@@ -30,6 +31,39 @@ export class UserController {
           fanProfile: fanProfile ? toFanResponse(fanProfile) : null,
         },
       });
+    } catch (error) { next(error); }
+  }
+
+  @Get('me/completeness')
+  async getCompleteness(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
+    try {
+      const userId = (req as any).userId!;
+      const [creatorProfile, fanProfile] = await Promise.all([
+        creatorService.findByUserId(userId),
+        fanService.findByUserId(userId),
+      ]);
+      const scores: number[] = [];
+      const missing: string[] = [];
+      if (creatorProfile) {
+        const result = computeCreatorCompleteness({
+          ...toCreatorResponse(creatorProfile),
+          followerCount: 0,
+          trackCount: 0,
+        });
+        scores.push(result.score);
+        missing.push(...result.missingFields);
+      }
+      if (fanProfile) {
+        const result = computeFanCompleteness(toFanResponse(fanProfile));
+        scores.push(result.score);
+        missing.push(...result.missingFields);
+      }
+      if (scores.length === 0) {
+        return res.status(200).json({ score: 0, missingFields: [] });
+      }
+      const score = Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length);
+      const missingFields = [...new Set(missing)];
+      return res.status(200).json({ score, missingFields });
     } catch (error) { next(error); }
   }
 
