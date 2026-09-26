@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { UserModule } from './modules/users/user.module.js';
 import { WalletModule } from './modules/wallet/wallet.module.js';
@@ -9,8 +11,18 @@ import { CreatorPayoutModule } from './modules/creator-payouts/creator-payout.mo
 import { NotificationModule } from './modules/notifications/notification.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
+import { TipModule } from './modules/tips/tip.module.js';
+import { StreamModule } from './modules/streams/stream.module.js';
 
 @Module({
-  imports: [AuthModule, UserModule, WalletModule, CreatorModule, FanModule, DepositModule, CreatorPayoutModule, NotificationModule, SearchModule, AdminModule],
+  imports: [
+    ThrottlerModule.forRoot([{ ttl: 60, limit: 100 }]),
+    AuthModule, UserModule, WalletModule, CreatorModule, FanModule, 
+    DepositModule, CreatorPayoutModule, NotificationModule, SearchModule, 
+    AdminModule, TipModule, StreamModule
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard }
+  ]
 })
 export class AppModule {}
