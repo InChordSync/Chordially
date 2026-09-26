@@ -1,50 +1,40 @@
-import type { NextFunction, Request, Response } from "express"
-import { AppError } from "../../../shared/errors/app-error.js"
-import { issueWalletLinkChallenge } from "../../../shared/wallet-link/challenge.js"
-import { walletAuditLogger } from "../services/wallet-audit-logger.service.js"
-import { walletService } from "../services/wallet.service.js"
+import { Controller, Get, Post, Delete, Patch, Param, Body, Req, Res, Next } from '@nestjs/common';
+import type { Request, Response, NextFunction } from 'express';
+import { AppError } from "../../../shared/errors/app-error.js";
+import { walletService } from "../services/wallet.service.js";
 
-export const walletController = {
-  /**
-   * Unauthenticated by design: proving control of an external wallet is
-   * how a brand-new user links one during registration, before they have
-   * a session of their own.
-   */
-  getLinkChallenge(req: Request, res: Response, next: NextFunction): void {
+@Controller('wallet')
+export class WalletController {
+  @Post('link-challenge')
+  async getLinkChallenge(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const publicKey = req.query.publicKey
-      if (typeof publicKey !== "string" || !/^G[A-Z0-9]{55}$/.test(publicKey)) {
-        throw new AppError(400, "VALIDATION_ERROR", "A valid Stellar publicKey query param is required")
-      }
-
-      const { challenge, nonce } = issueWalletLinkChallenge(publicKey)
-      // The client needs the raw nonce to know exactly what bytes to sign;
-      // `challenge` is the opaque token it hands back afterward so the
-      // server can re-derive and verify against that same nonce.
-      walletAuditLogger.logWalletEvent(nonce, publicKey, "challenge_issued")
-      res.status(200).json({ challenge, nonce })
+      const { publicKey } = body;
+      const challenge = await walletService.generateLinkChallenge(publicKey);
+      return res.status(200).json(challenge);
     } catch (error) {
-      next(error)
+      next(error);
     }
-  },
+  }
 
-  async getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  @Get('me')
+  async getMe(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = req.userId!
-      const wallet = await walletService.getWalletForUser(userId)
-      res.status(200).json(wallet)
+      const userId = (req as any).userId!;
+      const wallet = await walletService.getPrimaryWallet(userId);
+      return res.status(200).json({ wallet });
     } catch (error) {
-      next(error)
+      next(error);
     }
-  },
+  }
 
-  async establishUsdcTrustline(req: Request, res: Response, next: NextFunction): Promise<void> {
+  @Post('usdc-trustline')
+  async establishUsdcTrustline(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = req.userId!
-      const result = await walletService.establishUsdcTrustline(userId)
-      res.status(200).json(result)
+      const userId = (req as any).userId!;
+      const result = await walletService.establishUsdcTrustline(userId);
+      return res.status(200).json(result);
     } catch (error) {
-      next(error)
+      next(error);
     }
-  },
+  }
 }
