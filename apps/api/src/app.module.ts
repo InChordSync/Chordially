@@ -13,13 +13,14 @@ import { SearchModule } from './modules/search/search.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { TipModule } from './modules/tips/tip.module.js';
 import { StreamModule } from './modules/streams/stream.module.js';
+import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot([{ ttl: 60, limit: 100 }]),
     AuthModule, UserModule, WalletModule, CreatorModule, FanModule, 
     DepositModule, CreatorPayoutModule, NotificationModule, SearchModule, 
-    AdminModule, TipModule, StreamModule
+    AdminModule, TipModule, StreamModule, HealthModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard }
