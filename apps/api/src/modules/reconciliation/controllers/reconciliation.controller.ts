@@ -1,13 +1,14 @@
-import type { NextFunction, Request, Response } from "express"
-import { reconciliationService } from "../services/reconciliation.service.js"
+import { Controller, Post, Req, Res, Next } from '@nestjs/common';
+import type { Request, Response, NextFunction } from 'express';
+import { reconciliationService } from "../services/reconciliation.service.js";
 
-export const reconciliationController = {
-  async run(_req: Request, res: Response, next: NextFunction): Promise<void> {
+@Controller('reconciliation')
+export class ReconciliationController {
+  @Post('run')
+  async run(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const summary = await reconciliationService.run()
-      res.status(200).json(summary)
-    } catch (error) {
-      next(error)
-    }
-  },
+      const summary = await reconciliationService.run();
+      return res.status(200).json(summary);
+    } catch (error) { next(error); }
+  }
 }
