@@ -1,8 +1,10 @@
 import { Controller, Post, Body, Req, Res, Next } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response, NextFunction } from 'express';
 import { authService } from "../services/auth.service.js";
 import { loginSchema, registerSchema } from "../validators/auth.validators.js";
 
+@Throttle({ default: { limit: 5, ttl: 60_000 } })
 @Controller('auth')
 export class AuthController {
   @Post('register')
