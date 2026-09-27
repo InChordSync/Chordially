@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { LoggingInterceptor } from './shared/logger/logging.interceptor.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { UserModule } from './modules/users/user.module.js';
 import { WalletModule } from './modules/wallet/wallet.module.js';
@@ -23,7 +24,8 @@ import { HealthModule } from './modules/health/health.module.js';
     AdminModule, TipModule, StreamModule, HealthModule
   ],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard }
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor }
   ]
 })
 export class AppModule {}

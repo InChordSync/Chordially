@@ -1,9 +1,9 @@
 import crypto from "node:crypto"
-import bcrypt from "bcryptjs"
 import jwt, { type SignOptions } from "jsonwebtoken"
 import { env } from "../../../shared/config/env.js"
 import { prisma } from "../../../shared/database/prisma.js"
 import { AppError } from "../../../shared/errors/app-error.js"
+import { passwordService } from "./password.service.js"
 import { userService } from "../../users/services/user.service.js"
 import { walletService } from "../../wallet/services/wallet.service.js"
 import {
@@ -13,7 +13,6 @@ import {
 } from "../types/auth.types.js"
 import type { LoginInput, RegisterInput, RegisterLinkedInput } from "../validators/auth.validators.js"
 
-const PASSWORD_SALT_ROUNDS = 10
 const FALLBACK_REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60
 
 function issueToken(userId: string): string {
@@ -134,7 +133,7 @@ async function createUserAccount(email: string, password: string) {
     throw new AppError(409, "REGISTRATION_FAILED", "Unable to complete registration")
   }
 
-  const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS)
+  const passwordHash = await passwordService.hash(password)
   return userService.create({ email, passwordHash })
 }
 
@@ -184,7 +183,7 @@ export const authService = {
 
     await assertNotLocked(user)
 
-    const passwordMatches = await bcrypt.compare(input.password, user.passwordHash)
+    const passwordMatches = await passwordService.compare(input.password, user.passwordHash)
 
     if (!passwordMatches) {
       await recordFailedLogin(user)
@@ -246,7 +245,7 @@ export const authService = {
       throw new AppError(400, "INVALID_RESET_TOKEN", "Invalid or expired reset token")
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS)
+    const passwordHash = await passwordService.hash(newPassword)
     await userService.update(user.id, { passwordHash, failedLoginAttempts: 0, lockedUntil: null })
 
     // The token is single-use.
