@@ -7,13 +7,19 @@ import {
   Networks,
   NotFoundError,
   Operation,
+  Transaction,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
 import type { StellarPaymentClient } from './interfaces/index.js'
 import type {
+  BuildPaymentTransactionInput,
+  BuildSplitPaymentTransactionInput,
+  EstablishTrustlineInput,
   ListPaymentsOptions,
+  SponsorAccountCreationInput,
   StellarAccount,
   StellarAccountReference,
+  StellarAssetDescriptor,
   StellarKeypair,
   StellarNetworkConfig,
   StellarPaymentInput,
@@ -21,6 +27,7 @@ import type {
   StellarPaymentResult,
   StellarSplitPaymentInput,
 } from './types/index.js'
+import { NATIVE_ASSET } from './types/index.js'
 
 const NATIVE_ASSET_TYPES = new Set(['native'])
 
@@ -31,6 +38,14 @@ const TRANSIENT_TRANSACTION_RESULT_CODES = new Set([
   'tx_bad_seq',
   'tx_too_late',
   'tx_insufficient_fee',
+])
+
+// Horizon reports an underfunded source account as a per-operation result
+// code (op_underfunded / op_low_reserve) inside a tx_failed envelope, not as
+// its own transaction-level result code.
+const INSUFFICIENT_BALANCE_OPERATION_RESULT_CODES = new Set([
+  'op_underfunded',
+  'op_low_reserve',
 ])
 
 function networkPassphrase(network: StellarNetworkConfig['network']): string {
@@ -48,6 +63,31 @@ function transactionResultCode(error: unknown): string | undefined {
     | undefined
 
   return data?.extras?.result_codes?.transaction
+}
+
+function toSdkAsset(descriptor: StellarAssetDescriptor = NATIVE_ASSET): Asset {
+  if (descriptor.code === 'native') {
+    return Asset.native()
+  }
+
+  if (!descriptor.issuer) {
+    throw new Error(`issuer is required for asset ${descriptor.code}`)
+  }
+
+  return new Asset(descriptor.code, descriptor.issuer)
+}
+
+function operationResultCodes(error: unknown): string[] {
+  if (!(error instanceof Error)) {
+    return []
+  }
+
+  const response = (error as { response?: { data?: unknown } }).response
+  const data = response?.data as
+    | { extras?: { result_codes?: { operations?: string[] } } }
+    | undefined
+
+  return data?.extras?.result_codes?.operations ?? []
 }
 
 export class HorizonStellarClient implements StellarPaymentClient {
@@ -73,6 +113,7 @@ export class HorizonStellarClient implements StellarPaymentClient {
       balances: account.balances.map((balance) => ({
         assetType: balance.asset_type,
         assetCode: 'asset_code' in balance ? balance.asset_code : undefined,
+        assetIssuer: 'asset_issuer' in balance ? balance.asset_issuer : undefined,
         balance: balance.balance,
       })),
     }
@@ -113,6 +154,7 @@ export class HorizonStellarClient implements StellarPaymentClient {
       payments: [
         { destinationPublicKey: input.destinationPublicKey, amount: input.amount },
       ],
+      asset: input.asset,
     })
   }
 
@@ -135,11 +177,13 @@ export class HorizonStellarClient implements StellarPaymentClient {
       networkPassphrase: networkPassphrase(this.config.network),
     })
 
+    const asset = toSdkAsset(input.asset)
+
     for (const payment of input.payments) {
       builder.addOperation(
         Operation.payment({
           destination: payment.destinationPublicKey,
-          asset: Asset.native(),
+          asset,
           amount: payment.amount,
         })
       )
@@ -187,6 +231,8 @@ export class HorizonStellarClient implements StellarPaymentClient {
       to: string
       amount: string
       asset_type: string
+      asset_code?: string
+      asset_issuer?: string
       transaction_successful: boolean
       created_at: string
     }
@@ -201,8 +247,196 @@ export class HorizonStellarClient implements StellarPaymentClient {
         to: record.to,
         amount: record.amount,
         assetType: record.asset_type,
+        assetCode: record.asset_code,
+        assetIssuer: record.asset_issuer,
         successful: record.transaction_successful,
         createdAt: record.created_at,
       }))
+  }
+
+  async sponsorAccountCreation(input: SponsorAccountCreationInput): Promise<StellarPaymentResult> {
+    const sponsorKeypair = Keypair.fromSecret(input.sponsorSecretKey)
+    const newAccountKeypair = Keypair.fromSecret(input.newAccountSecretKey)
+
+    if (newAccountKeypair.publicKey() !== input.newAccountPublicKey) {
+      throw new Error('newAccountSecretKey does not match newAccountPublicKey')
+    }
+
+    const sponsorAccount = await this.server.loadAccount(sponsorKeypair.publicKey())
+
+    // Standard sponsored-account-creation shape: the sponsor declares it will
+    // cover the new account's reserves, the account is created with a
+    // starting balance of 0 XLM (the sponsor's reserve covers it instead),
+    // and the new account itself closes out the sponsorship window. The
+    // sponsor is the transaction source, so it also pays the network fee —
+    // the new user never spends or holds XLM to get their account created.
+    const transaction = new TransactionBuilder(sponsorAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: networkPassphrase(this.config.network),
+    })
+      .addOperation(
+        Operation.beginSponsoringFutureReserves({
+          sponsoredId: input.newAccountPublicKey,
+        })
+      )
+      .addOperation(
+        Operation.createAccount({
+          destination: input.newAccountPublicKey,
+          startingBalance: '0',
+        })
+      )
+      .addOperation(
+        Operation.endSponsoringFutureReserves({
+          source: input.newAccountPublicKey,
+        })
+      )
+      .setTimeout(30)
+      .build()
+
+    transaction.sign(sponsorKeypair, newAccountKeypair)
+
+    const result = await this.server.submitTransaction(transaction)
+
+    return { hash: result.hash, ledger: result.ledger, successful: result.successful }
+  }
+
+  async getSponsorBalance(sponsorPublicKey: string): Promise<string> {
+    return this.getNativeBalance({ publicKey: sponsorPublicKey })
+  }
+
+  isInsufficientSponsorBalanceError(error: unknown): boolean {
+    const operationCodes = operationResultCodes(error)
+    return operationCodes.some((code) => INSUFFICIENT_BALANCE_OPERATION_RESULT_CODES.has(code))
+  }
+
+  async establishTrustline(input: EstablishTrustlineInput): Promise<StellarPaymentResult> {
+    const accountKeypair = Keypair.fromSecret(input.accountSecretKey)
+    const asset = toSdkAsset(input.asset)
+
+    if (input.sponsorSecretKey) {
+      const sponsorKeypair = Keypair.fromSecret(input.sponsorSecretKey)
+      const sponsorAccount = await this.server.loadAccount(sponsorKeypair.publicKey())
+
+      const transaction = new TransactionBuilder(sponsorAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: networkPassphrase(this.config.network),
+      })
+        .addOperation(
+          Operation.beginSponsoringFutureReserves({
+            sponsoredId: accountKeypair.publicKey(),
+          })
+        )
+        .addOperation(
+          Operation.changeTrust({ asset, source: accountKeypair.publicKey() })
+        )
+        .addOperation(
+          Operation.endSponsoringFutureReserves({ source: accountKeypair.publicKey() })
+        )
+        .setTimeout(30)
+        .build()
+
+      transaction.sign(sponsorKeypair, accountKeypair)
+
+      const result = await this.server.submitTransaction(transaction)
+      return { hash: result.hash, ledger: result.ledger, successful: result.successful }
+    }
+
+    const account = await this.server.loadAccount(accountKeypair.publicKey())
+    const transaction = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: networkPassphrase(this.config.network),
+    })
+      .addOperation(Operation.changeTrust({ asset }))
+      .setTimeout(30)
+      .build()
+
+    transaction.sign(accountKeypair)
+
+    const result = await this.server.submitTransaction(transaction)
+    return { hash: result.hash, ledger: result.ledger, successful: result.successful }
+  }
+
+  async hasTrustline(
+    reference: StellarAccountReference,
+    asset: StellarAssetDescriptor
+  ): Promise<boolean> {
+    if (asset.code === 'native') {
+      return true
+    }
+
+    const account = await this.getAccount(reference)
+    return account.balances.some(
+      (balance) => balance.assetCode === asset.code && balance.assetIssuer === asset.issuer
+    )
+  }
+
+  async getAssetBalance(
+    reference: StellarAccountReference,
+    asset: StellarAssetDescriptor
+  ): Promise<string> {
+    if (asset.code === 'native') {
+      return this.getNativeBalance(reference)
+    }
+
+    const account = await this.getAccount(reference)
+    const match = account.balances.find(
+      (balance) => balance.assetCode === asset.code && balance.assetIssuer === asset.issuer
+    )
+    return match?.balance ?? '0'
+  }
+
+  signTransactionXdr(transactionXdr: string, secretKey: string): string {
+    const transaction = new Transaction(transactionXdr, networkPassphrase(this.config.network))
+    transaction.sign(Keypair.fromSecret(secretKey))
+    return transaction.toXDR()
+  }
+
+  verifySignature(publicKey: string, message: string, signatureBase64: string): boolean {
+    try {
+      return Keypair.fromPublicKey(publicKey).verify(
+        Buffer.from(message, 'utf8'),
+        Buffer.from(signatureBase64, 'base64')
+      )
+    } catch {
+      return false
+    }
+  }
+
+  async buildPaymentTransactionXdr(input: BuildPaymentTransactionInput): Promise<string> {
+    return this.buildSplitPaymentTransactionXdr({
+      sourcePublicKey: input.sourcePublicKey,
+      payments: [{ destinationPublicKey: input.destinationPublicKey, amount: input.amount }],
+      asset: input.asset,
+    })
+  }
+
+  async buildSplitPaymentTransactionXdr(input: BuildSplitPaymentTransactionInput): Promise<string> {
+    if (input.payments.length === 0) {
+      throw new Error('buildSplitPaymentTransactionXdr requires at least one payment')
+    }
+
+    const sourceAccount = await this.server.loadAccount(input.sourcePublicKey)
+    const asset = toSdkAsset(input.asset)
+
+    const builder = new TransactionBuilder(sourceAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: networkPassphrase(this.config.network),
+    })
+
+    for (const payment of input.payments) {
+      builder.addOperation(
+        Operation.payment({ destination: payment.destinationPublicKey, asset, amount: payment.amount })
+      )
+    }
+
+    // Longer timeout than a server-signed transaction: a linked wallet's
+    // owner needs time to open their extension and sign before this expires.
+    return builder.setTimeout(300).build().toXDR()
+  }
+
+  async submitSignedTransactionXdr(signedTransactionXdr: string): Promise<StellarPaymentResult> {
+    const transaction = new Transaction(signedTransactionXdr, networkPassphrase(this.config.network))
+    const result = await this.server.submitTransaction(transaction)
+    return { hash: result.hash, ledger: result.ledger, successful: result.successful }
   }
 }

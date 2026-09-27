@@ -1,9 +1,10 @@
 import http from "node:http"
 import type { AddressInfo } from "node:net"
 import request from "supertest"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createApp } from "../../../app.js"
 import { prisma } from "../../../shared/database/prisma.js"
+import { tipPayoutRepository } from "../../tips/repositories/tip-payout.repository.js"
 
 const app = createApp()
 
@@ -60,6 +61,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   await new Promise<void>((resolve) => server.close(() => resolve()))
 })
 
@@ -256,6 +258,49 @@ describe("GET /api/streams/:id/tips (SSE feed)", () => {
     sseReq.destroy()
   })
 
+  it("loads backlog payouts with a single batched query, not one per tip", async () => {
+    const fan = await registerAndLogin("backlog-batch-fan@test.com")
+    const { token: hostToken, creator } = await createCreatorWithProfileAndWallet(
+      "backlog-batch-creator@test.com",
+      "backlog-batch-creator"
+    )
+
+    const streamRes = await request(app)
+      .post("/api/streams")
+      .set("Authorization", `Bearer ${hostToken}`)
+      .send({})
+    const streamId = streamRes.body.id as string
+
+    // Two confirmed tips in the backlog before the feed connects.
+    for (let i = 0; i < 2; i++) {
+      const res = await request(app)
+        .post("/api/tips")
+        .set("Authorization", `Bearer ${fan.token}`)
+        .send({
+          creatorId: creator.id,
+          amount: "10",
+          idempotencyKey: crypto.randomUUID(),
+          streamId,
+        })
+      expect(res.body.status).toBe("confirmed")
+    }
+
+    const findByTipIds = vi.spyOn(tipPayoutRepository, "findByTipIds")
+
+    const { req: sseReq, collectUntil } = await openSseConnection(
+      `/api/streams/${streamId}/tips`,
+      hostToken
+    )
+    const events = await collectUntil((collected) => collected.length >= 2)
+
+    expect(findByTipIds).toHaveBeenCalledTimes(1)
+    expect(findByTipIds).toHaveBeenCalledWith(
+      expect.arrayContaining(events.map((event) => event.data.tipId))
+    )
+
+    sseReq.destroy()
+  })
+
   it("returns 401 for an unauthenticated request", async () => {
     const res = await request(app).get("/api/streams/does-not-exist/tips")
     expect(res.status).toBe(401)
@@ -268,5 +313,36 @@ describe("GET /api/streams/:id/tips (SSE feed)", () => {
       .set("Authorization", `Bearer ${token}`)
     expect(res.status).toBe(404)
     expect(res.body.error.code).toBe("STREAM_NOT_FOUND")
+  })
+
+  it("rejects excess concurrent connections once the per-user SSE cap is hit", async () => {
+    const { token: hostToken, creator } = await createCreatorWithProfileAndWallet(
+      "sse-cap-creator@test.com",
+      "sse-cap-creator"
+    )
+
+    const streamRes = await request(app)
+      .post("/api/streams")
+      .set("Authorization", `Bearer ${hostToken}`)
+      .send({ title: "Capped" })
+    const streamId = streamRes.body.id as string
+    const path = `/api/streams/${streamId}/tips`
+
+    // Default per-user cap is 5 (SSE_STREAM_MAX_PER_USER); hold that many
+    // connections open so the next one is rejected.
+    const held: { req: http.ClientRequest }[] = []
+    for (let i = 0; i < 5; i++) {
+      const conn = await openSseConnection(path, hostToken)
+      held.push(conn)
+    }
+
+    const sixth = await request(app).get(path).set("Authorization", `Bearer ${hostToken}`)
+
+    expect(sixth.status).toBe(503)
+    expect(sixth.body.error.code).toBe("SSE_LIMIT_REACHED")
+
+    for (const conn of held) {
+      conn.req.destroy()
+    }
   })
 })

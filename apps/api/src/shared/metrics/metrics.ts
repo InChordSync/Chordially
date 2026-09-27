@@ -10,6 +10,7 @@ interface HistogramSummary {
 interface MetricsSnapshot {
   counters: Record<string, number>
   histograms: Record<string, HistogramSummary>
+  gauges: Record<string, number>
 }
 
 const MAX_SAMPLES_PER_HISTOGRAM = 1000
@@ -26,9 +27,15 @@ const MAX_SAMPLES_PER_HISTOGRAM = 1000
 class MetricsRegistry {
   private readonly counters = new Map<string, number>()
   private readonly histograms = new Map<string, number[]>()
+  private readonly gauges = new Map<string, number>()
 
   incrementCounter(name: string, amount = 1): void {
     this.counters.set(name, (this.counters.get(name) ?? 0) + amount)
+  }
+
+  /** Records a point-in-time value (e.g. a balance) that overwrites its previous reading, unlike a counter. */
+  setGauge(name: string, value: number): void {
+    this.gauges.set(name, value)
   }
 
   observeLatency(name: string, ms: number): void {
@@ -51,13 +58,19 @@ class MetricsRegistry {
       histograms[name] = summarize(samples)
     }
 
-    return { counters, histograms }
+    const gauges: Record<string, number> = {}
+    for (const [name, value] of this.gauges) {
+      gauges[name] = value
+    }
+
+    return { counters, histograms, gauges }
   }
 
   /** Test-only: clears all recorded state. */
   reset(): void {
     this.counters.clear()
     this.histograms.clear()
+    this.gauges.clear()
   }
 }
 

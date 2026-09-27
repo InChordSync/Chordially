@@ -10,8 +10,11 @@ export interface RateLimiter {
 
 /**
  * Simple in-memory fixed-window-per-key rate limiter. Good enough for a
- * single API instance; a multi-instance deployment would need a shared store
- * (e.g. Redis) instead, without changing the call sites below.
+ * single API instance. A multi-instance deployment must NOT rely on this
+ * alone: each process carries its own counter, so a caller could rotate
+ * across instances to bypass the limit. Use the shared store in
+ * shared/rate-limit/db-rate-limiter.ts (Redis or DB-backed) for limits that
+ * must hold across all instances.
  */
 export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
   const hitsByKey = new Map<string, number[]>()

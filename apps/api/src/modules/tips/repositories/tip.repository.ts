@@ -15,6 +15,7 @@ export const tipRepository = {
         creatorId: input.creatorId,
         streamId: input.streamId,
         amount: input.amount,
+        asset: input.asset ?? "native",
         idempotencyKey: input.idempotencyKey,
         retriedFromTipId: input.retriedFromTipId,
         status: "pending",
@@ -40,6 +41,13 @@ export const tipRepository = {
 
   updateStatus(id: string, status: string): Promise<Tip> {
     return prisma.tip.update({ where: { id }, data: { status } })
+  },
+
+  markAwaitingSignature(id: string, unsignedTransactionXdr: string): Promise<Tip> {
+    return prisma.tip.update({
+      where: { id },
+      data: { status: "awaiting_signature", unsignedTransactionXdr },
+    })
   },
 
   markSubmitted(id: string, attempts: number): Promise<Tip> {

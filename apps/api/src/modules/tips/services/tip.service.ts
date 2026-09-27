@@ -5,12 +5,13 @@ import { splitAmount } from "../../streams/services/payout-split.util.js"
 import { streamPayoutConfigService } from "../../streams/services/stream-payout-config.service.js"
 import { streamService } from "../../streams/services/stream.service.js"
 import { walletRepository } from "../../wallet/repositories/wallet.repository.js"
-import { decryptSecret } from "../../wallet/services/wallet-crypto.service.js"
+import { decryptSecret, requireCustodialSecrets } from "../../wallet/services/wallet-crypto.service.js"
 import { AppError } from "../../../shared/errors/app-error.js"
 import { logger } from "../../../shared/logger/logger.js"
 import { metrics } from "../../../shared/metrics/metrics.js"
 import { tipEventBus } from "../../../shared/realtime/tip-event-bus.js"
 import { stellarClient } from "../../../shared/stellar/client.js"
+import { toAssetDescriptor, type TipAssetCode } from "../../../shared/stellar/assets.js"
 import { tipPayoutRepository } from "../repositories/tip-payout.repository.js"
 import { tipRepository } from "../repositories/tip.repository.js"
 import { toTipPayoutResponse, type TipPayout } from "../types/tip-payout.types.js"
@@ -81,22 +82,34 @@ interface PayoutDestination {
   amount: string
 }
 
-/** Resolves each payee's wallet, or returns null if any payee has none (the whole split can't be submitted). */
+function walletSupportsAsset(wallet: { usdcTrustline: boolean }, assetCode: TipAssetCode): boolean {
+  return assetCode === "native" || wallet.usdcTrustline
+}
+
+type ResolveDestinationsResult =
+  | { ok: true; destinations: PayoutDestination[] }
+  | { ok: false; reason: string }
+
+/** Resolves each payee's wallet, or a failure reason if any payee has none or hasn't set up the tip's asset. */
 async function resolvePayoutDestinations(
-  payouts: TipPayout[]
-): Promise<PayoutDestination[] | null> {
+  payouts: TipPayout[],
+  assetCode: TipAssetCode
+): Promise<ResolveDestinationsResult> {
   const destinations: PayoutDestination[] = []
 
   for (const payout of payouts) {
     const creator = await creatorService.findById(payout.creatorId)
     const wallet = creator ? await walletRepository.findByUserId(creator.userId) : null
     if (!wallet) {
-      return null
+      return { ok: false, reason: "One or more payees has no wallet" }
+    }
+    if (!walletSupportsAsset(wallet, assetCode)) {
+      return { ok: false, reason: `One or more payees has not set up ${assetCode} yet` }
     }
     destinations.push({ destinationPublicKey: wallet.publicKey, amount: payout.amount })
   }
 
-  return destinations
+  return { ok: true, destinations }
 }
 
 function recordFinalMetrics(
@@ -130,26 +143,10 @@ function recordFinalMetrics(
 async function submitToStellar(tip: Tip, initialPayouts: TipPayout[]): Promise<Tip> {
   const isSplit = initialPayouts.length > 0
   const submissionStartedAt = Date.now()
+  const assetCode = tip.asset as TipAssetCode
   const fanWallet = await walletRepository.findByUserId(tip.fanUserId)
 
-  if (!fanWallet) {
-    const { tip: failed } = await transition(
-      tip,
-      isSplit,
-      () => tipRepository.markFailed(tip.id, "Sender has no wallet", tip.attempts),
-      () => tipPayoutRepository.markFailedForTip(tip.id, "Sender has no wallet")
-    )
-    recordFinalMetrics(failed, "failed", submissionStartedAt, isSplit)
-    return failed
-  }
-
-  const singleCreator = isSplit ? null : await creatorService.findById(tip.creatorId)
-  const singleWallet =
-    !isSplit && singleCreator ? await walletRepository.findByUserId(singleCreator.userId) : null
-  const destinations = isSplit ? await resolvePayoutDestinations(initialPayouts) : null
-
-  if (isSplit && !destinations) {
-    const reason = "One or more payees has no wallet"
+  async function fail(reason: string): Promise<Tip> {
     const { tip: failed } = await transition(
       tip,
       isSplit,
@@ -160,15 +157,65 @@ async function submitToStellar(tip: Tip, initialPayouts: TipPayout[]): Promise<T
     return failed
   }
 
+  if (!fanWallet) {
+    return fail("Sender has no wallet")
+  }
+
+  if (!walletSupportsAsset(fanWallet, assetCode)) {
+    return fail(`Sender has not set up ${assetCode} yet`)
+  }
+
+  const singleCreator = isSplit ? null : await creatorService.findById(tip.creatorId)
+  const singleWallet =
+    !isSplit && singleCreator ? await walletRepository.findByUserId(singleCreator.userId) : null
+  const resolvedDestinations = isSplit
+    ? await resolvePayoutDestinations(initialPayouts, assetCode)
+    : null
+
+  if (isSplit && resolvedDestinations && !resolvedDestinations.ok) {
+    return fail(resolvedDestinations.reason)
+  }
+
   if (!isSplit && !singleWallet) {
-    const { tip: failed } = await transition(
-      tip,
-      isSplit,
-      () => tipRepository.markFailed(tip.id, "Creator has no wallet", tip.attempts),
-      () => Promise.resolve()
+    return fail("Creator has no wallet")
+  }
+
+  if (!isSplit && singleWallet && !walletSupportsAsset(singleWallet, assetCode)) {
+    return fail(`Creator has not set up ${assetCode} yet`)
+  }
+
+  const destinations =
+    resolvedDestinations && resolvedDestinations.ok ? resolvedDestinations.destinations : null
+  const asset = toAssetDescriptor(assetCode)
+
+  if (fanWallet.walletType === "linked") {
+    // A linked wallet has no secret we can decrypt and sign with — the fan
+    // must sign externally. Split tips aren't supported here yet (tracked
+    // as a follow-up): resolving which of several split-payment failure
+    // states to surface to an external signer adds real complexity that's
+    // out of scope for this pass.
+    if (isSplit) {
+      return fail("Split tips are not yet supported for linked wallets")
+    }
+
+    let unsignedTransactionXdr: string
+    try {
+      unsignedTransactionXdr = await stellarClient.buildPaymentTransactionXdr({
+        sourcePublicKey: fanWallet.publicKey,
+        destinationPublicKey: singleWallet!.publicKey,
+        amount: tip.amount,
+        asset,
+      })
+    } catch (error) {
+      return fail(errorMessage(error))
+    }
+
+    const awaitingSignature = await tipRepository.markAwaitingSignature(
+      tip.id,
+      unsignedTransactionXdr
     )
-    recordFinalMetrics(failed, "failed", submissionStartedAt, isSplit)
-    return failed
+    publishTipEvent(awaitingSignature, [])
+    return awaitingSignature
   }
 
   await transition(
@@ -178,7 +225,7 @@ async function submitToStellar(tip: Tip, initialPayouts: TipPayout[]): Promise<T
     () => tipPayoutRepository.updateStatusForTip(tip.id, "submitted")
   )
 
-  const sourceSecretKey = await decryptSecret(fanWallet)
+  const sourceSecretKey = await decryptSecret(requireCustodialSecrets(fanWallet))
 
   let attempts = tip.attempts
   let lastError: unknown
@@ -188,11 +235,12 @@ async function submitToStellar(tip: Tip, initialPayouts: TipPayout[]): Promise<T
 
     try {
       const result = destinations
-        ? await stellarClient.submitSplitPayment({ sourceSecretKey, payments: destinations })
+        ? await stellarClient.submitSplitPayment({ sourceSecretKey, payments: destinations, asset })
         : await stellarClient.submitPayment({
             sourceSecretKey,
             destinationPublicKey: singleWallet!.publicKey,
             amount: tip.amount,
+            asset,
           })
 
       const { tip: confirmed } = await transition(
@@ -312,6 +360,45 @@ export const tipService = {
     return toTipResponse(finalTip, finalPayouts)
   },
 
+  /**
+   * Completes a linked-wallet tip: the fan signed the unsigned transaction
+   * `submitTip` returned earlier (see submitToStellar's "linked" branch)
+   * with their own external wallet, and submits it back here. This never
+   * touches wallet-crypto.service.ts — there is no secret to decrypt.
+   */
+  async submitSignedTip(
+    tipId: string,
+    fanUserId: string,
+    signedTransactionXdr: string
+  ): Promise<TipResponse> {
+    const tip = await tipRepository.findById(tipId)
+    if (!tip || tip.fanUserId !== fanUserId) {
+      throw new AppError(404, "TIP_NOT_FOUND", "Tip not found")
+    }
+
+    if (tip.status !== "awaiting_signature") {
+      throw new AppError(
+        400,
+        "TIP_NOT_AWAITING_SIGNATURE",
+        "This tip is not waiting on an external signature"
+      )
+    }
+
+    try {
+      const result = await stellarClient.submitSignedTransactionXdr(signedTransactionXdr)
+      const confirmed = await tipRepository.markConfirmed(tip.id, result.hash, tip.attempts + 1)
+      publishTipEvent(confirmed, [])
+      logger.info("Tip finalized", { tipId: tip.id, status: "confirmed", isSplit: false })
+      return toTipResponse(confirmed)
+    } catch (error) {
+      const reason = errorMessage(error)
+      const failed = await tipRepository.markFailed(tip.id, reason, tip.attempts + 1)
+      publishTipEvent(failed, [])
+      logger.warn("Signed tip submission failed", { tipId: tip.id, error: reason })
+      return toTipResponse(failed)
+    }
+  },
+
   async getTipForFan(tipId: string, fanUserId: string): Promise<TipResponse> {
     const tip = await tipRepository.findById(tipId)
     if (!tip || tip.fanUserId !== fanUserId) {
@@ -320,6 +407,22 @@ export const tipService = {
 
     const payouts = await tipPayoutRepository.findByTipId(tip.id)
     return toTipResponse(tip, payouts)
+  },
+
+  /**
+   * Resolves the stream scope of a tip the fan wants to retry, or null when
+   * the tip doesn't exist / isn't theirs. Lets the controller apply the
+   * per-stream rate limit before retryTip() creates the new tip.
+   */
+  async getRetryScope(
+    tipId: string,
+    fanUserId: string
+  ): Promise<{ streamId: string | null } | null> {
+    const original = await tipRepository.findById(tipId)
+    if (!original || original.fanUserId !== fanUserId) {
+      return null
+    }
+    return { streamId: original.streamId }
   },
 
   /**
@@ -350,6 +453,7 @@ export const tipService = {
       streamId: original.streamId ?? undefined,
       idempotencyKey: crypto.randomUUID(),
       retriedFromTipId: original.id,
+      asset: original.asset as TipAssetCode,
     })
   },
 }

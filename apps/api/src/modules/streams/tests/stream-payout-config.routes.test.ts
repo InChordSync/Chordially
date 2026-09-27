@@ -6,11 +6,14 @@ import { prisma } from "../../../shared/database/prisma.js"
 const app = createApp()
 
 async function registerAndLogin(email: string) {
-  await request(app).post("/api/auth/register").send({ email, password: "Password1!" })
+  const regRes = await request(app).post("/api/auth/register").send({ email, password: "Password1!" })
+  if (regRes.body.token && regRes.body.user) {
+    return { token: regRes.body.token as string, userId: regRes.body.user.id as string }
+  }
   const res = await request(app)
     .post("/api/auth/login")
     .send({ email, password: "Password1!" })
-  return { token: res.body.token as string, userId: res.body.user.id as string }
+  return { token: res.body.token as string, userId: res.body.user?.id as string }
 }
 
 async function createCreator(email: string, slug: string) {

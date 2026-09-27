@@ -8,15 +8,22 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  passwordHash   String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  creatorProfile CreatorProfile?
-  fanProfile     FanProfile?
-  wallet         Wallet?
-  tipsSent       Tip[]
+  id                   String                  @id @default(cuid())
+  email                String                  @unique
+  passwordHash         String
+  emailVerified        Boolean                 @default(false)
+  failedLoginAttempts  Int                     @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  creatorProfile       CreatorProfile?
+  fanProfile           FanProfile?
+  wallet               Wallet?
+  tipsSent             Tip[]
+  walletDeposits       WalletDeposit[]
+  refreshTokens        RefreshToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens  PasswordResetToken[]
 }
 
 model CreatorProfile {
@@ -36,6 +43,8 @@ model CreatorProfile {
   streams      Stream[]
   payoutShares StreamPayoutConfigPayee[]
   tipPayouts   TipPayout[]
+  payouts      CreatorPayout[]
+  bookmarkedBy Bookmark[]
 }
 
 model FanProfile {
@@ -47,6 +56,7 @@ model FanProfile {
   genrePrefs  String   @default("[]")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  bookmarks   Bookmark[]
 }
 
 // Custodial Stellar wallet. The secret key never leaves this row in
@@ -58,11 +68,20 @@ model Wallet {
   userId           String   @unique
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   publicKey        String   @unique
-  encryptedSecret  String
-  encryptedDataKey String
-  iv               String
-  authTag          String
+  // "custodial" (the platform holds the secret key, encrypted below) or
+  // "linked" (an external wallet the user controls themselves — the four
+  // encrypted* fields are null and every field below stays null forever).
+  // Guard any decryptSecret() call site on this before assuming custodial.
+  walletType       String   @default("custodial")
+  encryptedSecret  String?
+  encryptedDataKey String?
+  iv               String?
+  authTag          String?
   network          String   @default("testnet")
+  // Whether this wallet has an established USDC trustline on the ledger.
+  // Checked before a USDC tip is submitted so a missing trustline fails
+  // fast with a clear error instead of a generic Horizon submission error.
+  usdcTrustline    Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -80,7 +99,17 @@ model Tip {
   streamId       String?
   stream         Stream?   @relation(fields: [streamId], references: [id], onDelete: SetNull)
   amount         String
+  // "native" (XLM) or an issued asset code (e.g. "USDC"). Applies to the
+  // whole tip, including every payout of a split tip.
+  asset          String    @default("native")
+  // pending -> submitted -> confirmed|failed for a custodial fan wallet.
+  // A linked fan wallet instead goes pending -> awaiting_signature (see
+  // unsignedTransactionXdr) -> confirmed|failed once the fan submits their
+  // own signature via POST /api/tips/:id/submit-signed.
   status         String    @default("pending")
+  // Set only while status = "awaiting_signature": the transaction the fan's
+  // linked wallet needs to sign externally to complete this tip.
+  unsignedTransactionXdr String?
   txHash         String?
   failureReason  String?
   attempts       Int       @default(0)
@@ -154,4 +183,125 @@ model TipPayout {
   failureReason String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// A creator's cash-out of accumulated on-chain tips to fiat via a SEP-24
+// anchor withdrawal. Kept entirely separate from Tip/TipPayout — this has
+// its own idempotency and state machine because a payout that fails
+// between "submitted on-chain" and "anchor confirmed receipt" is a
+// real-money discrepancy, not a retryable UX-level failure.
+model CreatorPayout {
+  id                  String   @id @default(cuid())
+  idempotencyKey      String
+  creatorId           String
+  creator             CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  assetCode           String
+  amount              String
+  // awaiting_anchor_details -> submitted -> completed | failed
+  status              String   @default("awaiting_anchor_details")
+  anchorTransactionId String
+  interactiveUrl      String
+  txHash              String?
+  failureReason       String?
+  attempts            Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([creatorId, idempotencyKey])
+  @@index([creatorId])
+}
+
+// A generic, database-backed idempotency record store. Unlike the
+// request-scoped in-memory Map it replaces, these rows survive a restart
+// and are shared across every API instance, so a retried or duplicated
+// request can never trigger the same money movement twice (see
+// modules/payments/services/payment-idempotency-guard.service.ts).
+model TransactionIdempotencyRecord {
+  id           String   @id @default(cuid())
+  key          String
+  // Owner namespacing: the idempotency key is unique per owner so two
+  // different users can never collide, mirroring Tip/CreatorPayout.
+  ownerId      String
+  requestPath  String
+  responseBody String   @default("{}")
+  statusCode   Int      @default(200)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([ownerId, key])
+  @@index([key])
+}
+
+// A fan's fiat-to-Stellar deposit via a SEP-24 anchor, kept as its own
+// audit trail distinct from Tip since this is platform money movement
+// (real fiat rails), not a tip. Status mirrors SEP-24's own transaction
+// state machine (see shared/anchor/sep24-client.ts) rather than inventing a
+// parallel one, so it stays legible against the anchor's own dashboard/logs.
+model WalletDeposit {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetCode           String
+  anchorTransactionId String
+  interactiveUrl      String
+  status              String   @default("incomplete")
+  amountIn            String?
+  failureReason       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// A notification delivered to a recipient (fan or creator). The web/mobile
+// shells shipped without any backend to read from; this is the persistence
+// model behind GET /api/notifications and the mark-read endpoints.
+model Notification {
+  id          String   @id @default(cuid())
+  recipientId String
+  recipient   User     @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String?
+  type        String
+  title       String
+  body        String
+  metadata    String   @default("{}")
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([recipientId, read])
+}
+
+// Server-side session for the access/refresh token pair issued at
+// login/register. Only the sha256 hash of the raw refresh token is stored;
+// the raw token is returned once to the client and can never be re-derived
+// from the database. A token is single-use: refresh rotates it (the
+// presented one is revoked and a new pair issued), and logout revokes
+// every outstanding token for the user so they stop working immediately.
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// A fan's saved reference to a creator — the backend behind mobile/web
+// "saved creators" lists. A fan can bookmark each creator at most once.
+model Bookmark {
+  id        String        @id @default(cuid())
+  fanId     String
+  fan       FanProfile    @relation(fields: [fanId], references: [id], onDelete: Cascade)
+  creatorId String
+  creator   CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([fanId, creatorId])
+  @@index([fanId])
 }

@@ -55,3 +55,89 @@ describe("wallet crypto envelope encryption", () => {
     )
   })
 })
+
+describe("wallet crypto decrypt failure paths", () => {
+  const dataKey = randomBytes(32)
+
+  function setupHappyPath() {
+    sendMock.mockImplementation((command: { input: { CiphertextBlob?: Uint8Array } }) => {
+      if ("CiphertextBlob" in command.input) {
+        return Promise.resolve({ Plaintext: dataKey })
+      }
+      return Promise.resolve({ Plaintext: dataKey, CiphertextBlob: Buffer.from("wrapped-key") })
+    })
+  }
+
+  afterEach(() => {
+    sendMock.mockReset()
+  })
+
+  it("rejects with the underlying error when KMS is unavailable during decrypt", async () => {
+    setupHappyPath()
+    const secret = "SOMEPLAINTEXTSECRETVALUEFORTHETEST"
+    const encrypted = await encryptSecret(secret)
+
+    // DecryptCommand carries a CiphertextBlob, so reject only that leg.
+    sendMock.mockImplementation((command: { input: { CiphertextBlob?: Uint8Array } }) => {
+      if ("CiphertextBlob" in command.input) {
+        return Promise.reject(new Error("KMS temporarily unavailable"))
+      }
+      return Promise.resolve({ Plaintext: dataKey, CiphertextBlob: Buffer.from("wrapped-key") })
+    })
+
+    await expect(decryptSecret(encrypted)).rejects.toThrow("KMS temporarily unavailable")
+  })
+
+  it("rejects when KMS returns no plaintext data key during decrypt", async () => {
+    setupHappyPath()
+    const secret = "ANOTHERPLAINTEXTSECRETVALUE"
+    const encrypted = await encryptSecret(secret)
+
+    sendMock.mockImplementation((command: { input: { CiphertextBlob?: Uint8Array } }) => {
+      if ("CiphertextBlob" in command.input) {
+        return Promise.resolve({}) // no Plaintext
+      }
+      return Promise.resolve({ Plaintext: dataKey, CiphertextBlob: Buffer.from("wrapped-key") })
+    })
+
+    await expect(decryptSecret(encrypted)).rejects.toThrow(
+      "KMS did not return a usable data key"
+    )
+  })
+
+  it("rejects corrupted ciphertext instead of returning garbage", async () => {
+    setupHappyPath()
+    const secret = "CORRUPTIONTESTPLAINTEXT"
+    const encrypted = await encryptSecret(secret)
+
+    // Flip a base64 character in the ciphertext so GCM authentication fails.
+    const corrupted = {
+      ...encrypted,
+      encryptedSecret:
+        (encrypted.encryptedSecret[0] === "A" ? "B" : "A") + encrypted.encryptedSecret.slice(1),
+    }
+
+    await expect(decryptSecret(corrupted)).rejects.toThrow()
+  })
+
+  it("rejects a tampered auth tag", async () => {
+    setupHappyPath()
+    const secret = "TAMPEREDTAGPLAINTEXT"
+    const encrypted = await encryptSecret(secret)
+
+    const tampered = {
+      ...encrypted,
+      authTag: (encrypted.authTag[0] === "A" ? "B" : "A") + encrypted.authTag.slice(1),
+    }
+
+    await expect(decryptSecret(tampered)).rejects.toThrow()
+  })
+
+  it("rejects an invalid base64 iv instead of crashing the process", async () => {
+    setupHappyPath()
+    const secret = "BADIVPLAINTEXT"
+    const encrypted = await encryptSecret(secret)
+
+    await expect(decryptSecret({ ...encrypted, iv: "!!not-base64!!" })).rejects.toThrow()
+  })
+})

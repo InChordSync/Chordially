@@ -1,5 +1,6 @@
 import {
   Image,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -59,6 +60,10 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2 },
+      android: { elevation: 3 }
+    })
   },
   placeholder: {
     backgroundColor: "#ddd",

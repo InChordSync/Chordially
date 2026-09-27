@@ -43,6 +43,24 @@ export const tipController = {
     }
   },
 
+  async submitSigned(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const fanUserId = req.userId!
+      const { id } = req.params
+      const { signedTransactionXdr } = req.body as { signedTransactionXdr?: unknown }
+
+      if (typeof signedTransactionXdr !== "string" || signedTransactionXdr.length === 0) {
+        throw new AppError(400, "VALIDATION_ERROR", "signedTransactionXdr is required")
+      }
+
+      const tip = await tipService.submitSignedTip(id!, fanUserId, signedTransactionXdr)
+
+      res.status(200).json(tip)
+    } catch (error) {
+      next(error)
+    }
+  },
+
   async retry(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const fanUserId = req.userId!
@@ -50,6 +68,19 @@ export const tipController = {
 
       if (!tipFanRateLimiter.consume(fanUserId)) {
         throw new AppError(429, "RATE_LIMITED", "You're sending tips too quickly. Try again shortly.")
+      }
+
+      const scope = await tipService.getRetryScope(id!, fanUserId)
+      if (!scope) {
+        throw new AppError(404, "TIP_NOT_FOUND", "Tip not found")
+      }
+
+      if (scope.streamId && !tipStreamRateLimiter.consume(scope.streamId)) {
+        throw new AppError(
+          429,
+          "STREAM_RATE_LIMITED",
+          "This stream is receiving too many tips right now. Try again shortly."
+        )
       }
 
       const tip = await tipService.retryTip(id!, fanUserId)

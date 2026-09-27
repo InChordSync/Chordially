@@ -7,6 +7,20 @@ export function getMe(token: string): Promise<MeResponse> {
   })
 }
 
+export function getAvatarUploadUrl(
+  token: string,
+  contentType: string
+): Promise<{ uploadUrl: string; avatarUrl: string }> {
+  return apiFetch<{ uploadUrl: string; avatarUrl: string }>(
+    "/api/users/me/avatar-upload-url",
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({ contentType }),
+    }
+  )
+}
+
 export function updateMe(
   token: string,
   input: UpdateMeInput

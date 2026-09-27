@@ -7,6 +7,13 @@ export const tipPayoutRepository = {
     return prisma.tipPayout.findMany({ where: { tipId }, orderBy: { createdAt: "asc" } })
   },
 
+  findByTipIds(tipIds: string[]): Promise<TipPayout[]> {
+    return prisma.tipPayout.findMany({
+      where: { tipId: { in: tipIds } },
+      orderBy: { createdAt: "asc" },
+    })
+  },
+
   createMany(inputs: CreateTipPayoutInput[]): Promise<TipPayout[]> {
     return prisma.$transaction(
       inputs.map((input) =>

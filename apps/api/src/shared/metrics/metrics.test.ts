@@ -30,6 +30,14 @@ describe("metrics", () => {
     expect(histogram.maxMs).toBe(500)
   })
 
+  it("gauges overwrite their previous reading rather than accumulating", () => {
+    metrics.setGauge("stellar_sponsor_balance_xlm", 500)
+    metrics.setGauge("stellar_sponsor_balance_xlm", 480)
+
+    const snapshot = metrics.getSnapshot()
+    expect(snapshot.gauges.stellar_sponsor_balance_xlm).toBe(480)
+  })
+
   it("returns an empty summary for a histogram with no samples", () => {
     const snapshot = metrics.getSnapshot()
     expect(snapshot.histograms.nonexistent).toBeUndefined()

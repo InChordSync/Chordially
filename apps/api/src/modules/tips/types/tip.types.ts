@@ -1,6 +1,8 @@
+import type { TipAssetCode } from "../../../shared/stellar/assets.js"
 import { toTipPayoutResponse, type TipPayout, type TipPayoutResponse } from "./tip-payout.types.js"
 
-export type TipStatus = "pending" | "submitted" | "confirmed" | "failed"
+export type TipStatus = "pending" | "awaiting_signature" | "submitted" | "confirmed" | "failed"
+export type { TipAssetCode }
 
 export interface Tip {
   id: string
@@ -9,7 +11,10 @@ export interface Tip {
   creatorId: string
   streamId: string | null
   amount: string
+  asset: string
   status: string
+  /** Set only while status = "awaiting_signature" (a linked fan wallet). */
+  unsignedTransactionXdr: string | null
   txHash: string | null
   failureReason: string | null
   attempts: number
@@ -25,6 +30,7 @@ export interface CreateTipInput {
   idempotencyKey: string
   streamId?: string
   retriedFromTipId?: string
+  asset?: TipAssetCode
 }
 
 export interface TipResponse {
@@ -32,7 +38,9 @@ export interface TipResponse {
   creatorId: string
   streamId: string | null
   amount: string
+  asset: string
   status: TipStatus
+  unsignedTransactionXdr: string | null
   txHash: string | null
   failureReason: string | null
   retriedFromTipId: string | null
@@ -45,7 +53,9 @@ export function toTipResponse(tip: Tip, payouts?: TipPayout[]): TipResponse {
     creatorId: tip.creatorId,
     streamId: tip.streamId,
     amount: tip.amount,
+    asset: tip.asset,
     status: tip.status as TipStatus,
+    unsignedTransactionXdr: tip.unsignedTransactionXdr,
     txHash: tip.txHash,
     failureReason: tip.failureReason,
     retriedFromTipId: tip.retriedFromTipId,
