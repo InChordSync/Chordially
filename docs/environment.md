@@ -13,6 +13,7 @@ Copy `apps/api/.env.example` to `apps/api/.env`:
 | Variable         | Description                                                 |
 | ---------------- | ----------------------------------------------------------- |
 | `NODE_ENV`       | `development`, `test`, or `production`.                     |
+| `LOG_LEVEL`      | Minimum severity the structured logger emits: `debug`, `info`, `warn`, or `error` (default `info`). |
 | `PORT`           | Port the API server listens on (default `4000`).            |
 | `DATABASE_URL`   | SQLite connection string for Prisma (e.g. `file:./dev.db`). |
 | `JWT_SECRET`     | Secret used to sign authentication JWTs.                    |
