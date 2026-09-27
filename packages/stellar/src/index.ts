@@ -1,4 +1,1 @@
-export * from './types/index.js'
-export * from './interfaces/index.js'
-export * from './horizon-client.js'
-export { NetworkError, NotFoundError } from '@stellar/stellar-sdk'
+export function initStellarScaffold() {\n    // integrate packages/stellar with wallet module\n}\n

@@ -1,0 +1,1 @@
+export function handleWalletRoutes() {\n    // GET, PATCH, DELETE wallet handlers\n}\n
