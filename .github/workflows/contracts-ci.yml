@@ -1,0 +1,6 @@
+name: Contracts CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: []
