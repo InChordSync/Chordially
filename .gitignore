@@ -22,3 +22,6 @@ apps/mobile/ios
 apps/mobile/android
 apps/mobile/web-build
 SPRINTS.md
+
+# Local contract deployments
+contracts/deployments/local.json

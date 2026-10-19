@@ -10,14 +10,14 @@ which holds non-sensitive test-only values) are checked in.
 
 Copy `apps/api/.env.example` to `apps/api/.env`:
 
-| Variable         | Description                                                 |
-| ---------------- | ----------------------------------------------------------- |
-| `NODE_ENV`       | `development`, `test`, or `production`.                     |
+| Variable         | Description                                                                                         |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`       | `development`, `test`, or `production`.                                                             |
 | `LOG_LEVEL`      | Minimum severity the structured logger emits: `debug`, `info`, `warn`, or `error` (default `info`). |
-| `PORT`           | Port the API server listens on (default `4000`).            |
-| `DATABASE_URL`   | SQLite connection string for Prisma (e.g. `file:./dev.db`). |
-| `JWT_SECRET`     | Secret used to sign authentication JWTs.                    |
-| `JWT_EXPIRES_IN` | JWT expiry (e.g. `1h`).                                     |
+| `PORT`           | Port the API server listens on (default `4000`).                                                    |
+| `DATABASE_URL`   | SQLite connection string for Prisma (e.g. `file:./dev.db`).                                         |
+| `JWT_SECRET`     | Secret used to sign authentication JWTs.                                                            |
+| `JWT_EXPIRES_IN` | JWT expiry (e.g. `1h`).                                                                             |
 
 `apps/api/.env.test` is committed with safe, test-only values and is used
 automatically by the `test` script.
@@ -44,3 +44,16 @@ Copy `apps/mobile/.env.example` to `apps/mobile/.env`:
 - Do not commit real database URLs, API keys, or signing secrets.
 - `.env.example` files should only ever contain placeholder or default
   values.
+
+## Local Stellar network
+
+`pnpm contracts:local:up` starts `docker-compose.stellar.yml` (Docker needs about 4 GB of memory) and
+`pnpm contracts:local:deploy` writes these to `.env.local`:
+
+| Variable                     | Value                                |
+| ---------------------------- | ------------------------------------ |
+| `STELLAR_NETWORK`            | `local`                              |
+| `STELLAR_NETWORK_PASSPHRASE` | `Standalone Network ; February 2017` |
+| `HORIZON_URL`                | `http://localhost:8000`              |
+| `SOROBAN_RPC_URL`            | `http://localhost:8000/soroban/rpc`  |
+| `FRIENDBOT_URL`              | `http://localhost:8000/friendbot`    |
