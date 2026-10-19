@@ -1,0 +1,11 @@
+[package]
+name = "chordially-common"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["rlib"]
+
+[lints]
+workspace = true
