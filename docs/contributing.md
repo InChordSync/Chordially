@@ -41,3 +41,5 @@ product overview and direction.
   new top-level layers.
 - Do not commit secrets, `.env` files, or generated artifacts (`dist/`,
   `.next/`, `.expo/`, `*.db`).
+
+- Smart contract toolchain setup: [contracts-setup.md](./contracts-setup.md).
