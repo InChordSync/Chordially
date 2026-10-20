@@ -1,0 +1,12 @@
+# Local Stellar network (Horizon + Soroban RPC + Friendbot). Needs ~4 GB of Docker memory.
+services:
+  stellar:
+    image: stellar/quickstart:v678-b1525.1-latest
+    command: --local --enable rpc,horizon,friendbot
+    ports:
+      - '8000:8000'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/']
+      interval: 5s
+      timeout: 5s
+      retries: 60
