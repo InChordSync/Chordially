@@ -25,3 +25,6 @@ SPRINTS.md
 
 # Local contract deployments
 contracts/deployments/local.json
+contracts/target/
+**/target/
+*.wasm
