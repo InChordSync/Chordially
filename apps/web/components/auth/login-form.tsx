@@ -1,6 +1,7 @@
 "use client"
 
 import { loginSchema } from "@chordially/shared"
+import Link from "next/link"
 import { useState, type FormEvent } from "react"
 import { AuthApiError } from "../../lib/auth-client"
 import { useAuth } from "../../lib/auth-context"
@@ -72,9 +73,9 @@ export function LoginForm() {
       </div>
 
       <div style={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}>
-        <a href="/forgot-password" style={{ fontSize: "0.875rem", color: "#3b82f6", textDecoration: "underline" }}>
+        <Link href="/forgot-password" className="auth-link">
           Forgot password?
-        </a>
+        </Link>
       </div>
 
       {formError && <p role="alert">{formError}</p>}

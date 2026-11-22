@@ -55,3 +55,9 @@ button {
 [role="status"] {
   color: #1a7f37;
 }
+
+.auth-link {
+  font-size: 0.875rem;
+  color: #3b82f6;
+  text-decoration: underline;
+}
