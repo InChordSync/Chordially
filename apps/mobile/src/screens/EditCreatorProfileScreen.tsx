@@ -1,14 +1,5 @@
-import { useRef, useState } from "react"
-import {
-  Button,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native"
+import { useMemo, useState } from "react"
+import { Alert, Button, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 
 export interface EditableCreatorFields {
   bio: string
@@ -21,19 +12,7 @@ interface Props {
   onSave: (fields: EditableCreatorFields) => void
 }
 
-function normalizeSocialLink(value: string): string | null {
-  const trimmed = value.trim()
-  if (!trimmed) return ""
-  try {
-    const url = new URL(trimmed)
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null
-    url.protocol = url.protocol.toLowerCase()
-    url.hostname = url.hostname.toLowerCase()
-    return url.toString()
-  } catch {
-    return null
-  }
-}
+const BIO_MAX_LENGTH = 300
 
 /** Minimal mobile form for editing bio, location, and one social link. */
 export default function EditCreatorProfileScreen({ initial, onSave }: Props) {
@@ -52,44 +31,68 @@ export default function EditCreatorProfileScreen({ initial, onSave }: Props) {
     ["socialLink", "Social link"],
   ]
 
-  const handleSave = () => {
-    const normalized = normalizeSocialLink(fields.socialLink)
-    if (normalized === null) {
-      setSocialLinkError("Enter a valid http(s) URL")
-      socialLinkRef.current?.focus()
-      return
-    }
+  const isDirty = useMemo(
+    () =>
+      fields.bio !== initial.bio ||
+      fields.location !== initial.location ||
+      fields.socialLink !== initial.socialLink,
+    [fields, initial],
+  )
 
-    onSave({ ...fields, socialLink: normalized })
+  const socialLinkInvalid = fields.socialLink.trim() !== "" && !fields.socialLink.startsWith("http")
+  const canSave = isDirty && !socialLinkInvalid
+
+  const handleDiscard = () => {
+    if (!isDirty) return
+    Alert.alert("Discard changes?", "Your unsaved profile changes will be lost.", [
+      { text: "Keep editing", style: "cancel" },
+      { text: "Discard", style: "destructive", onPress: () => setFields(initial) },
+    ])
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 24 : 0}
-    >
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-        {rows.map(([key, label, multiline]) => (
-          <View key={key}>
-            <Text style={styles.label}>{label}</Text>
-            <TextInput
-              ref={key === "socialLink" ? socialLinkRef : undefined}
-              value={fields[key]}
-              onChangeText={(v) => update(key, v)}
-              multiline={multiline}
-              keyboardType={key === "socialLink" ? "url" : "default"}
-              autoCapitalize="none"
-              style={styles.input}
-            />
-            {key === "socialLink" && socialLinkError ? (
-              <Text style={styles.error}>{socialLinkError}</Text>
-            ) : null}
-          </View>
-        ))}
-        <Button title="Save" onPress={handleSave} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <ScrollView style={styles.container}>
+      {rows.map(([key, label, multiline]) => (
+        <View key={key} accessible={false}>
+          <Text style={styles.label} nativeID={`${key}-label`}>{label}</Text>
+          <TextInput
+            value={fields[key]}
+            onChangeText={(v) => update(key, v)}
+            multiline={multiline}
+            keyboardType={key === "socialLink" ? "url" : "default"}
+            autoCapitalize="none"
+            style={styles.input}
+            accessibilityLabel={label}
+            accessibilityLabelledBy={`${key}-label`}
+            testID={`edit-profile-${key}`}
+            maxLength={key === "bio" ? BIO_MAX_LENGTH : undefined}
+          />
+          {key === "bio" && (
+            <Text style={styles.counter} testID="bio-counter">
+              {fields.bio.length}/{BIO_MAX_LENGTH}
+            </Text>
+          )}
+        </View>
+      ))}
+      {socialLinkInvalid && (
+        <Text style={styles.error} accessibilityRole="alert">Invalid social link URL</Text>
+      )}
+      {isDirty && <Text style={styles.warning} testID="unsaved-warning">You have unsaved changes.</Text>}
+      <View style={styles.actions}>
+        <Button
+          title="Save"
+          onPress={() => {
+            if (!canSave) return
+            onSave(fields)
+          }}
+          disabled={!canSave}
+          testID="save-profile"
+        />
+        <View style={styles.discardButton}>
+          <Button title="Discard changes" onPress={handleDiscard} disabled={!isDirty} testID="discard-profile" />
+        </View>
+      </View>
+    </ScrollView>
   )
 }
 
@@ -98,5 +101,9 @@ const styles = StyleSheet.create({
   container: { padding: 20 },
   label: { fontSize: 14, fontWeight: "600", marginTop: 12 },
   input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 8, marginTop: 4 },
+  counter: { fontSize: 12, color: "#666", marginTop: 4, textAlign: "right" },
   error: { color: "red", marginTop: 8 },
+  warning: { color: "#92400e", marginTop: 8 },
+  actions: { marginTop: 16, gap: 8 },
+  discardButton: { marginTop: 8 },
 })

@@ -1,9 +1,10 @@
 "use client"
 
+import { CREATOR_GENRES } from "@chordially/shared"
 import { useEffect, useState } from "react"
 import { DiscoveryEmptyState } from "../../src/components/DiscoveryEmptyState"
 
-const GENRES = ["Any", "Hip-Hop", "Pop", "Electronic", "Rock", "Jazz"]
+const GENRES = ["Any", ...CREATOR_GENRES]
 
 type SearchState =
   | { status: "idle" }
