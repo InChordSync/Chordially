@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native"
 
 export interface MobileNotification {
@@ -11,28 +11,50 @@ export interface MobileNotification {
 
 export interface NotificationsInboxScreenProps {
   initialNotifications?: MobileNotification[]
-  onMarkAllRead?: () => void
+  onMarkAllRead?: () => void | Promise<void>
+  onMarkRead?: (id: string) => void | Promise<void>
+  isLoading?: boolean
 }
 
 export function NotificationsInboxScreen({
   initialNotifications = [],
   onMarkAllRead,
+  onMarkRead,
+  isLoading = false,
 }: NotificationsInboxScreenProps) {
   const [notifications, setNotifications] = useState<MobileNotification[]>(initialNotifications)
   const [filter, setFilter] = useState<"ALL" | "UNREAD">("ALL")
 
-  const handleToggleRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, read: !item.read } : item))
-    )
-  }
+  useEffect(() => {
+    setNotifications(initialNotifications)
+  }, [initialNotifications])
 
-  const handleMarkAll = () => {
-    setNotifications((prev) => prev.map((item) => ({ ...item, read: true })))
-    if (onMarkAllRead) {
-      onMarkAllRead()
+  const handleMarkRead = useCallback(async (id: string) => {
+    const target = notifications.find((item) => item.id === id)
+    if (!target || target.read) return
+
+    setNotifications((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, read: true } : item))
+    )
+
+    try {
+      await onMarkRead?.(id)
+    } catch {
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, read: false } : item))
+      )
     }
-  }
+  }, [notifications, onMarkRead])
+
+  const handleMarkAll = useCallback(async () => {
+    const previous = notifications
+    setNotifications((prev) => prev.map((item) => ({ ...item, read: true })))
+    try {
+      await onMarkAllRead?.()
+    } catch {
+      setNotifications(previous)
+    }
+  }, [notifications, onMarkAllRead])
 
   const filteredNotifications = notifications.filter((n) =>
     filter === "UNREAD" ? !n.read : true
@@ -78,7 +100,16 @@ export function NotificationsInboxScreen({
         </TouchableOpacity>
       </View>
 
-      {filteredNotifications.length === 0 ? (
+      {isLoading ? (
+        <View testID="notifications-loading">
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={styles.skeletonItem}>
+              <View style={styles.skeletonTitle} />
+              <View style={styles.skeletonBody} />
+            </View>
+          ))}
+        </View>
+      ) : filteredNotifications.length === 0 ? (
         <View style={styles.emptyContainer} testID="empty-inbox-state">
           <Text style={styles.emptyText}>No notifications in this view.</Text>
         </View>
@@ -89,7 +120,7 @@ export function NotificationsInboxScreen({
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[styles.notifItem, item.read ? styles.notifRead : styles.notifUnread]}
-              onPress={() => handleToggleRead(item.id)}
+              onPress={() => void handleMarkRead(item.id)}
               testID={`mobile-notif-item-${item.id}`}
             >
               <View style={styles.notifHeader}>
@@ -163,6 +194,25 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#64748b",
     fontSize: 14,
+  },
+  skeletonItem: {
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: "#1e293b",
+  },
+  skeletonTitle: {
+    height: 14,
+    width: "60%",
+    backgroundColor: "#334155",
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonBody: {
+    height: 12,
+    width: "90%",
+    backgroundColor: "#334155",
+    borderRadius: 4,
   },
   notifItem: {
     padding: 12,
