@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react"
 import { View, FlatList, RefreshControl, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native"
+import { StatusBar } from "expo-status-bar"
 import { CompactCreatorCard } from "../components/CompactCreatorCard"
 
 export interface CreatorItem {
@@ -75,22 +76,30 @@ export function FanExploreScreen({
     }
   }, [hasMore, isLoadingMore, loadError, onFetchMore])
 
+  const renderItem = useCallback(
+    ({ item }: { item: CreatorItem }) => (
+      <CompactCreatorCard
+        id={item.id}
+        displayName={item.displayName}
+        slug={item.slug}
+        avatarUrl={item.avatarUrl}
+        followerCount={item.followerCount}
+        isFollowing={item.isFollowing}
+        onFollowToggle={onFollowToggle}
+      />
+    ),
+    [onFollowToggle],
+  )
+
   return (
     <View style={styles.container} testID="fan-explore-screen">
+      <StatusBar style="light" />
       <FlatList
         data={creators}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <CompactCreatorCard
-            id={item.id}
-            displayName={item.displayName}
-            slug={item.slug}
-            avatarUrl={item.avatarUrl}
-            followerCount={item.followerCount}
-            isFollowing={item.isFollowing}
-            onFollowToggle={onFollowToggle}
-          />
-        )}
+        renderItem={renderItem}
+        getItemLayout={(_, index) => ({ length: 76, offset: 76 * index, index })}
+        windowSize={7}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -102,6 +111,16 @@ export function FanExploreScreen({
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={<Text style={styles.headerTitle}>Explore Creators</Text>}
+        ListEmptyComponent={
+          isInitialLoading ? (
+            <ActivityIndicator style={{ marginVertical: 24 }} color="#6366f1" />
+          ) : (
+            <View style={styles.emptyContainer} testID="explore-empty-state">
+              <Text style={styles.emptyTitle}>No creators to show</Text>
+              <Text style={styles.emptySubtitle}>Pull down to refresh and try again.</Text>
+            </View>
+          )
+        }
         ListFooterComponent={
           isLoadingMore ? (
             <ActivityIndicator style={{ marginVertical: 16 }} size="small" color="#6366f1" />
@@ -134,6 +153,21 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#ffffff",
     marginVertical: 16,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    color: "#e2e8f0",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    color: "#94a3b8",
+    fontSize: 14,
+    textAlign: "center",
   },
   errorFooter: {
     paddingVertical: 16,

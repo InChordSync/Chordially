@@ -38,7 +38,19 @@ export default tseslint.config(
     },
     rules: {
       "no-console": "off",
-      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/lib/users/*", "**/lib/users/**"],
+              message:
+                "Do not add per-user directories under apps/web/lib/users; use shared modules instead.",
+            },
+          ],
+        },
+      ],
     }
   }
 );

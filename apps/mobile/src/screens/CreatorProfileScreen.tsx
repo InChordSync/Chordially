@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native"
+import { ApiError, NetworkError } from "../services/api-client"
 import {
   getCreatorBySlug,
   type CreatorProfile,
@@ -15,7 +17,7 @@ import {
 
 type LoadState =
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; kind: "not-found" | "offline" | "generic" }
   | { status: "ok"; profile: CreatorProfile }
 
 interface Props {
@@ -26,17 +28,33 @@ export default function CreatorProfileScreen({ slug }: Props) {
   const [state, setState] = useState<LoadState>({ status: "loading" })
   const [refreshing, setRefreshing] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (active?: () => boolean) => {
+    setState({ status: "loading" })
     try {
       const profile = await getCreatorBySlug(slug)
+      if (active && !active()) return
       setState({ status: "ok", profile })
-    } catch {
-      setState({ status: "error", message: "Creator not found" })
+    } catch (error) {
+      if (active && !active()) return
+      if (error instanceof NetworkError) {
+        setState({ status: "error", kind: "offline", message: "You appear to be offline. Check your connection and try again." })
+        return
+      }
+      if (error instanceof ApiError && error.status === 404) {
+        setState({ status: "error", kind: "not-found", message: "Creator not found" })
+        return
+      }
+      setState({ status: "error", kind: "generic", message: "Could not load this creator profile." })
     }
   }, [slug])
 
   useEffect(() => {
-    void load()
+    let mounted = true
+    const active = () => mounted
+    void load(active)
+    return () => {
+      mounted = false
+    }
   }, [load])
 
   const onRefresh = useCallback(async () => {
@@ -58,8 +76,14 @@ export default function CreatorProfileScreen({ slug }: Props) {
 
   if (state.status === "error") {
     return (
-      <ScrollView contentContainerStyle={styles.center} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        <Text>{state.message}</Text>
+      <ScrollView
+        contentContainerStyle={styles.center}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <Text style={styles.errorText}>{state.message}</Text>
+        <Pressable onPress={() => void load()} style={styles.retryButton} testID="profile-retry-btn">
+          <Text style={styles.retryText}>Retry</Text>
+        </Pressable>
       </ScrollView>
     )
   }
@@ -111,6 +135,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    padding: 20,
   },
   container: {
     flex: 1,
@@ -144,5 +169,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#888",
     marginTop: 4,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  retryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#6366f1",
+    borderRadius: 8,
+  },
+  retryText: {
+    color: "#ffffff",
+    fontWeight: "600",
   },
 })
