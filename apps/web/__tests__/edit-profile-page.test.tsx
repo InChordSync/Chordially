@@ -29,6 +29,8 @@ vi.mock("../lib/auth-client", () => ({
 const mockUpdateMe = vi.fn().mockResolvedValue({ ok: true })
 const mockGetAvatarUploadUrl = vi.fn()
 
+const mockGetAvatarUploadUrl = vi.fn()
+
 vi.mock("../lib/user-client", () => ({
   getMe: vi.fn().mockResolvedValue({
     user: {

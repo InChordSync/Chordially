@@ -1,8 +1,9 @@
-import { useEffect } from "react"
-let globalSavedCreatorsCache: SavedCreatorItem[] | null = null;
-import React, { useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native"
+import { StatusBar } from "expo-status-bar"
 import { CompactCreatorCard } from "../components/CompactCreatorCard"
+
+let globalSavedCreatorsCache: SavedCreatorItem[] | null = null;
 
 export interface SavedCreatorItem {
   id: string
@@ -34,15 +35,36 @@ export function SavedCreatorsScreen({
     globalSavedCreatorsCache = savedCreators;
   }, [savedCreators]);
 
-  const handleRemove = (creatorId: string) => {
+  const handleRemove = useCallback((creatorId: string) => {
     setSavedCreators((prev) => prev.filter((item) => item.id !== creatorId))
-    if (onRemoveBookmark) {
-      onRemoveBookmark(creatorId)
-    }
-  }
+    onRemoveBookmark?.(creatorId)
+  }, [onRemoveBookmark])
+
+  const renderItem = useCallback(({ item }: { item: SavedCreatorItem }) => (
+    <View style={styles.cardWrapper}>
+      <View style={{ flex: 1 }}>
+        <CompactCreatorCard
+          id={item.id}
+          displayName={item.displayName}
+          slug={item.slug}
+          followerCount={item.followerCount}
+          isFollowing={item.isFollowing}
+          onFollowToggle={onFollowToggle}
+        />
+      </View>
+      <TouchableOpacity
+        style={styles.removeBtn}
+        onPress={() => handleRemove(item.id)}
+        testID={`remove-saved-btn-${item.id}`}
+      >
+        <Text style={styles.removeBtnText}>Remove</Text>
+      </TouchableOpacity>
+    </View>
+  ), [handleRemove, onFollowToggle])
 
   return (
     <View style={styles.container} testID="saved-creators-screen">
+      <StatusBar style="light" />
       <Text style={styles.headerTitle}>Saved Creators</Text>
 
       {savedCreators.length === 0 ? (
@@ -54,27 +76,9 @@ export function SavedCreatorsScreen({
         <FlatList
           data={savedCreators}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.cardWrapper}>
-              <View style={{ flex: 1 }}>
-                <CompactCreatorCard
-                  id={item.id}
-                  displayName={item.displayName}
-                  slug={item.slug}
-                  followerCount={item.followerCount}
-                  isFollowing={item.isFollowing}
-                  onFollowToggle={onFollowToggle}
-                />
-              </View>
-              <TouchableOpacity
-                style={styles.removeBtn}
-                onPress={() => handleRemove(item.id)}
-                testID={`remove-saved-btn-${item.id}`}
-              >
-                <Text style={styles.removeBtnText}>Remove</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          renderItem={renderItem}
+          windowSize={7}
+          removeClippedSubviews
         />
       )}
     </View>

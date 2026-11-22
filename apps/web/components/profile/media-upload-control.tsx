@@ -2,8 +2,11 @@
 
 import { useState, type ChangeEvent } from "react"
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
-const MAX_SIZE_BYTES = 5 * 1024 * 1024
+export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const
+export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+
+const ALLOWED_TYPES: readonly string[] = ALLOWED_IMAGE_TYPES
+const MAX_SIZE_BYTES = MAX_IMAGE_SIZE_BYTES
 
 interface MediaUploadControlProps {
   onFileValid: (file: File) => void
