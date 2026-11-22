@@ -1,10 +1,11 @@
-import React, { useState } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native"
+import React, { useEffect, useState } from "react"
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from "react-native"
 
 export interface CompactCreatorCardProps {
   id: string
   displayName: string
   slug: string
+  avatarUrl?: string | null
   followerCount: number
   isFollowing?: boolean
   onFollowToggle?: (creatorId: string, currentFollowing: boolean) => Promise<boolean>
@@ -14,6 +15,7 @@ export function CompactCreatorCard({
   id,
   displayName,
   slug,
+  avatarUrl,
   followerCount: initialFollowerCount,
   isFollowing: initialIsFollowing = false,
   onFollowToggle,
@@ -21,6 +23,7 @@ export function CompactCreatorCard({
   const [following, setFollowing] = useState(initialIsFollowing)
   const [followerCount, setFollowerCount] = useState(initialFollowerCount)
   const [isLoading, setIsLoading] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
 
   const handlePressFollow = async () => {
     if (isLoading) return
@@ -48,11 +51,24 @@ export function CompactCreatorCard({
     }
   }
 
+  useEffect(() => {
+    setAvatarError(false)
+  }, [avatarUrl])
+
   return (
     <View style={styles.cardContainer} testID={`compact-creator-card-${id}`}>
-      <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
-      </View>
+      {avatarUrl && !avatarError ? (
+        <Image
+          source={{ uri: avatarUrl }}
+          style={styles.avatarImage}
+          onError={() => setAvatarError(true)}
+          accessibilityLabel={`${displayName} avatar`}
+        />
+      ) : (
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
+        </View>
+      )}
       <View style={styles.infoContainer}>
         <Text style={styles.displayName} numberOfLines={1}>
           {displayName}
@@ -97,6 +113,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    backgroundColor: "#334155",
   },
   avatarText: {
     color: "#ffffff",

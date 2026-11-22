@@ -9,6 +9,29 @@ export interface MobileNotification {
   createdAt: string
 }
 
+export function formatNotificationTime(createdAt: string, now = Date.now()): string {
+  const date = new Date(createdAt)
+  if (Number.isNaN(date.getTime())) return createdAt
+
+  const diffMs = date.getTime() - now
+  const diffSeconds = Math.round(diffMs / 1000)
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" })
+  const absSeconds = Math.abs(diffSeconds)
+
+  if (absSeconds < 60) return rtf.format(diffSeconds, "second")
+  const diffMinutes = Math.round(diffSeconds / 60)
+  if (Math.abs(diffMinutes) < 60) return rtf.format(diffMinutes, "minute")
+  const diffHours = Math.round(diffMinutes / 60)
+  if (Math.abs(diffHours) < 24) return rtf.format(diffHours, "hour")
+  const diffDays = Math.round(diffHours / 24)
+  if (Math.abs(diffDays) < 7) return rtf.format(diffDays, "day")
+
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date)
+}
+
 export interface NotificationsInboxScreenProps {
   initialNotifications?: MobileNotification[]
   onMarkAllRead?: () => void
@@ -58,6 +81,7 @@ export function NotificationsInboxScreen({
       <View style={styles.filterRow}>
         <TouchableOpacity
           style={[styles.filterChip, filter === "ALL" && styles.filterChipActive]}
+          accessibilityLabel="Show all notifications"
           onPress={() => setFilter("ALL")}
           testID="filter-all-btn"
         >
@@ -67,6 +91,7 @@ export function NotificationsInboxScreen({
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.filterChip, filter === "UNREAD" && styles.filterChipActive]}
+          accessibilityLabel="Show unread notifications"
           onPress={() => setFilter("UNREAD")}
           testID="filter-unread-btn"
         >
@@ -95,7 +120,7 @@ export function NotificationsInboxScreen({
                 <View style={[styles.statusDot, item.read ? styles.dotRead : styles.dotUnread]} />
               </View>
               <Text style={styles.notifBody}>{item.body}</Text>
-              <Text style={styles.notifTime}>{item.createdAt}</Text>
+              <Text style={styles.notifTime}>{formatNotificationTime(item.createdAt)}</Text>
             </TouchableOpacity>
           )}
         />
