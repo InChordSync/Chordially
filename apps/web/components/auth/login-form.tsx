@@ -4,11 +4,14 @@ import { loginSchema } from "@chordially/shared"
 import { useState, type FormEvent } from "react"
 import { AuthApiError } from "../../lib/auth-client"
 import { useAuth } from "../../lib/auth-context"
+import { mapZodIssues } from "../../lib/form-utils"
+import { TextField } from "../form/text-field"
 
 export function LoginForm() {
   const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -20,48 +23,38 @@ export function LoginForm() {
     setSuccess(false)
 
     const result = loginSchema.safeParse({ email, password })
-
     if (!result.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of result.error.issues) {
-        const field = issue.path[0]
-        if (typeof field === "string" && !errors[field]) {
-          errors[field] = issue.message
-        }
-      }
-      setFieldErrors(errors)
+      setFieldErrors(mapZodIssues(result.error.issues))
       return
     }
 
     setFieldErrors({})
     setIsSubmitting(true)
-
     try {
       await login(result.data)
       setSuccess(true)
     } catch (error) {
-      setFormError(
-        error instanceof AuthApiError ? error.message : "Unable to log in"
-      )
+      setFormError(error instanceof AuthApiError ? error.message : "Unable to log in")
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const emailErrorId = "login-email-error"
+  const passwordErrorId = "login-password-error"
+
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <div>
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        {fieldErrors.email && <p role="alert">{fieldErrors.email}</p>}
-      </div>
+      <TextField
+        id="email"
+        name="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        value={email}
+        error={fieldErrors.email}
+        onChange={(event) => setEmail(event.target.value)}
+      />
 
       <div>
         <label htmlFor="password">Password</label>
@@ -71,9 +64,11 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           value={password}
+          aria-invalid={fieldErrors.password ? true : undefined}
+          aria-describedby={fieldErrors.password ? "password-error" : undefined}
           onChange={(event) => setPassword(event.target.value)}
         />
-        {fieldErrors.password && <p role="alert">{fieldErrors.password}</p>}
+        {fieldErrors.password && <p id="password-error" role="alert">{fieldErrors.password}</p>}
       </div>
 
       <div style={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}>

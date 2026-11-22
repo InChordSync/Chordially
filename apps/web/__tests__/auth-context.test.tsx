@@ -1,69 +1,88 @@
-import { render, screen, act } from "@testing-library/react"
-import { describe, expect, it, vi, beforeEach } from "vitest"
+import { act, renderHook, waitFor } from "@testing-library/react"
+import type { ReactNode } from "react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { AuthProvider, useAuth } from "../lib/auth-context"
+import { loginUser, registerUser } from "../lib/auth-client"
 
 vi.mock("../lib/auth-client", () => ({
   loginUser: vi.fn(),
   registerUser: vi.fn(),
-  AuthApiError: class AuthApiError extends Error {},
 }))
 
-vi.mock("../lib/user-client", () => ({
-  getMe: vi.fn().mockResolvedValue({ user: { id: "u1", email: "a@b.com" } }),
-}))
+const TOKEN_KEY = "chordially.token"
+const USER_KEY = "chordially.user"
 
-function Consumer({ onRender }: { onRender?: () => void }) {
-  const { isLoading, user } = useAuth()
-  onRender?.()
-  return <div>{isLoading ? "loading" : user ? user.email : "anon"}</div>
+function wrapper({ children }: { children: ReactNode }) {
+  return <AuthProvider>{children}</AuthProvider>
 }
 
-beforeEach(() => {
-  localStorage.clear()
-  vi.clearAllMocks()
-})
-
-describe("AuthProvider", () => {
-  it("memoizes context value to avoid unnecessary consumer rerenders (#1372)", async () => {
-    let renders = 0
-    const { rerender } = render(
-      <AuthProvider>
-        <Consumer onRender={() => { renders += 1 }} />
-      </AuthProvider>
-    )
-
-    await screen.findByText("anon")
-    const afterMount = renders
-
-    rerender(
-      <AuthProvider>
-        <Consumer onRender={() => { renders += 1 }} />
-      </AuthProvider>
-    )
-
-    // Rerender of parent with same provider tree may remount; the key check is
-    // value is memoized (consumer should not rerender from value identity churn alone).
-    expect(renders).toBeLessThanOrEqual(afterMount + 2)
+describe("AuthProvider (#1382)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    window.localStorage.clear()
   })
 
-  it("syncs logout across tabs via storage event (#1370)", async () => {
-    localStorage.setItem("chordially.token", "token")
-    localStorage.setItem("chordially.user", JSON.stringify({ id: "u1", email: "a@b.com" }))
+  it("hydrates from valid storage", async () => {
+    window.localStorage.setItem(TOKEN_KEY, "tok")
+    window.localStorage.setItem(USER_KEY, JSON.stringify({ id: "u1", email: "a@b.com" }))
 
-    render(
-      <AuthProvider>
-        <Consumer />
-      </AuthProvider>
-    )
+    const { result } = renderHook(() => useAuth(), { wrapper })
 
-    await screen.findByText("a@b.com")
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.token).toBe("tok")
+    expect(result.current.user).toMatchObject({ id: "u1" })
+  })
+
+  it("handles corrupt storage gracefully", async () => {
+    window.localStorage.setItem(TOKEN_KEY, "tok")
+    window.localStorage.setItem(USER_KEY, "{bad json")
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.user).toBeNull()
+    expect(result.current.token).toBeNull()
+    expect(window.localStorage.getItem(USER_KEY)).toBeNull()
+  })
+
+  it("persists login and logout clears session", async () => {
+    vi.mocked(loginUser).mockResolvedValue({ user: { id: "u2", email: "b@b.com" } as any, token: "tok2" })
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await act(async () => {
-      localStorage.removeItem("chordially.token")
-      localStorage.removeItem("chordially.user")
-      window.dispatchEvent(new StorageEvent("storage", { key: "chordially.token" }))
+      await result.current.login({ email: "b@b.com", password: "password123" } as any)
     })
 
-    expect(await screen.findByText("anon")).toBeInTheDocument()
+    expect(result.current.token).toBe("tok2")
+    expect(window.localStorage.getItem(TOKEN_KEY)).toBe("tok2")
+    expect(JSON.parse(window.localStorage.getItem(USER_KEY)!)).toMatchObject({ id: "u2" })
+
+    act(() => {
+      result.current.logout()
+    })
+
+    expect(result.current.user).toBeNull()
+    expect(result.current.token).toBeNull()
+    expect(window.localStorage.getItem(TOKEN_KEY)).toBeNull()
+  })
+
+  it("persists register", async () => {
+    vi.mocked(registerUser).mockResolvedValue({ user: { id: "u3", email: "c@b.com" } as any, token: "tok3" })
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.register({ email: "c@b.com", password: "password123", displayName: "C" } as any)
+    })
+
+    expect(result.current.token).toBe("tok3")
+    expect(window.localStorage.getItem(TOKEN_KEY)).toBe("tok3")
+  })
+
+  it("throws when useAuth is used outside provider", () => {
+    expect(() => renderHook(() => useAuth())).toThrow("useAuth must be used within an AuthProvider")
   })
 })

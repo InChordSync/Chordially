@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react-native"
 import { act } from "react"
-import ProfileImagePicker from "../src/components/ProfileImagePicker"
+import ProfileImagePicker from "../components/ProfileImagePicker"
 
 const mockRequestPermissions = jest.fn()
 const mockLaunchLibrary = jest.fn()

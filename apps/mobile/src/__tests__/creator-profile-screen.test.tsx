@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react-native"
 import { act } from "react"
-import CreatorProfileScreen from "../src/screens/CreatorProfileScreen"
+import CreatorProfileScreen from "../screens/CreatorProfileScreen"
 
 const mockProfile = {
   id: "cp-1",
@@ -18,7 +18,7 @@ const mockProfile = {
 
 let resolveProfile: (value: typeof mockProfile) => void
 
-jest.mock("../src/services/creator-service", () => ({
+jest.mock("../services/creator-service", () => ({
   getCreatorBySlug: jest.fn(
     () =>
       new Promise((resolve) => {
