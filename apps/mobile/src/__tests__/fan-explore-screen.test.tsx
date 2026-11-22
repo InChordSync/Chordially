@@ -44,6 +44,27 @@ describe("Mobile Discovery Components (#688, #689, #690)", () => {
     expect(getByText("Luna Song")).toBeTruthy()
   })
 
+  it("shows retry footer when fetch more fails (#1407)", async () => {
+    const FlatList = require("react-native").FlatList
+    const onFetchMore = jest.fn().mockRejectedValue(new Error("network"))
+    const { UNSAFE_getByType, findByTestId } = render(
+      <FanExploreScreen initialCreators={mockCreators} onFetchMore={onFetchMore} />
+    )
+    fireEvent(UNSAFE_getByType(FlatList), "endReached")
+    expect(await findByTestId("explore-error-footer")).toBeTruthy()
+  })
+
+  it("deduplicates overlapping paged results (#1408)", async () => {
+    const FlatList = require("react-native").FlatList
+    const onFetchMore = jest.fn().mockResolvedValue([mockCreators[0], { id: "c2", displayName: "Nova", slug: "nova", followerCount: 1 }])
+    const { UNSAFE_getByType, findByText, queryAllByText } = render(
+      <FanExploreScreen initialCreators={mockCreators} onFetchMore={onFetchMore} />
+    )
+    fireEvent(UNSAFE_getByType(FlatList), "endReached")
+    await findByText("Nova")
+    expect(queryAllByText("Luna Song")).toHaveLength(1)
+  })
+
   it("shows empty state when list is empty (#1409)", () => {
     const { getByTestId, getByText } = render(<FanExploreScreen initialCreators={[]} />)
     expect(getByTestId("explore-empty-state")).toBeTruthy()
@@ -76,5 +97,6 @@ describe("Mobile Discovery Components (#688, #689, #690)", () => {
     rerender(<CompactCreatorCard id="c4" displayName="Sync" slug="sync" followerCount={99} isFollowing={true} />)
     expect(getByText("Following")).toBeTruthy()
     expect(getByText("99 followers")).toBeTruthy()
+  })
   })
 })

@@ -49,7 +49,7 @@ describe("CreatorProfileScreen", () => {
 
   it("renders the verified badge", async () => {
     await renderAndLoad()
-    expect(screen.getByLabelText("Verified")).toBeTruthy()
+    expect(screen.getByLabelText("Solar Vibes, verified creator")).toBeTruthy()
   })
 
   it("shows default avatar when avatarUrl is null", async () => {
