@@ -76,6 +76,10 @@ export const CompactCreatorCard = memo(function CompactCreatorCard({
     }
   }, [followerCount, following, id, isLoading, onFollowToggle])
 
+  useEffect(() => {
+    setAvatarError(false)
+  }, [avatarUrl])
+
   return (
     <View style={styles.cardContainer} testID={`compact-creator-card-${id}`}>
       {avatarUrl && !avatarError ? (

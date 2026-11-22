@@ -1,6 +1,6 @@
 import React from "react"
 import { render, fireEvent } from "@testing-library/react-native"
-import { NotificationsInboxScreen } from "../screens/NotificationsInboxScreen"
+import { NotificationsInboxScreen, formatNotificationTime } from "../screens/NotificationsInboxScreen"
 
 const sampleMobileNotifs = [
   { id: "mn1", title: "New Follower", body: "Alex followed you.", read: false, createdAt: "10m ago" },
@@ -21,5 +21,11 @@ describe("NotificationsInboxScreen (#697)", () => {
 
     expect(mockMarkAll).toHaveBeenCalledTimes(1)
     expect(getByText("Notifications (0 unread)")).toBeTruthy()
+  })
+
+  it("formats notification timestamps and handles invalid dates (#1416)", () => {
+    expect(formatNotificationTime("not-a-date")).toBe("not-a-date")
+    const formatted = formatNotificationTime("2026-11-19T10:15:00.000Z", Date.parse("2026-11-19T10:20:00.000Z"))
+    expect(formatted.toLowerCase()).toContain("minute")
   })
 })
