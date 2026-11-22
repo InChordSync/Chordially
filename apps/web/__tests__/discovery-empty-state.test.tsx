@@ -1,6 +1,7 @@
 import React from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
+import { CREATOR_GENRES } from "@chordially/shared"
 import { DiscoveryEmptyState } from "../components/DiscoveryEmptyState"
 
 describe("DiscoveryEmptyState Component (#687)", () => {
@@ -28,5 +29,12 @@ describe("DiscoveryEmptyState Component (#687)", () => {
     const resetBtn = screen.getByTestId("reset-filters-btn")
     fireEvent.click(resetBtn)
     expect(mockReset).toHaveBeenCalledOnce()
+  })
+
+  it("renders every shared genre suggestion as selectable (#1393)", () => {
+    render(<DiscoveryEmptyState />)
+    for (const genre of CREATOR_GENRES) {
+      expect(screen.getByTestId(`suggestion-chip-${genre}`)).toBeDefined()
+    }
   })
 })

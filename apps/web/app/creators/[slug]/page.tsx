@@ -43,15 +43,19 @@ export default function CreatorProfilePage() {
   }, [slug])
 
   if (state.status === "loading") {
-    return <p>Loading…</p>
+    return (
+      <main>
+        <p role="status">Loading…</p>
+      </main>
+    )
   }
 
   if (state.status === "error") {
     return (
-      <div>
+      <main>
         <h1>Not Found</h1>
         <p>{state.message}</p>
-      </div>
+      </main>
     )
   }
 
