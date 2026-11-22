@@ -1,5 +1,6 @@
 import { useState } from "react"
 import * as ImagePicker from "expo-image-picker"
+import { validatePickedImage } from "../lib/image-validation"
 
 export interface PickedImage {
   uri: string
@@ -33,6 +34,12 @@ export function useImagePicker() {
     }
 
     const asset = result.assets[0]!
+    const validationError = validatePickedImage(asset)
+    if (validationError) {
+      setError(validationError)
+      return null
+    }
+
     const picked: PickedImage = {
       uri: asset.uri,
       mimeType: asset.mimeType ?? "image/jpeg",

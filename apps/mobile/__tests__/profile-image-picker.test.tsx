@@ -101,4 +101,47 @@ describe("ProfileImagePicker", () => {
 
     expect(onImagePicked).not.toHaveBeenCalled()
   })
+
+  it("rejects oversized images with a friendly error (#1426)", async () => {
+    mockRequestPermissions.mockResolvedValue({ granted: true })
+    mockLaunchLibrary.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: "file:///big.jpg", mimeType: "image/jpeg", fileSize: 6 * 1024 * 1024 }],
+    })
+
+    render(
+      <ProfileImagePicker
+        currentAvatarUrl={null}
+        onImagePicked={onImagePicked}
+      />
+    )
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Pick profile image"))
+    })
+
+    expect(onImagePicked).not.toHaveBeenCalled()
+    expect(screen.getByText("Image must be smaller than 5 MB")).toBeTruthy()
+  })
+
+  it("accepts HEIC photos that the API allow-list supports (#1427)", async () => {
+    mockRequestPermissions.mockResolvedValue({ granted: true })
+    mockLaunchLibrary.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: "file:///photo.heic", mimeType: "image/heic", fileSize: 1024 }],
+    })
+
+    render(
+      <ProfileImagePicker
+        currentAvatarUrl={null}
+        onImagePicked={onImagePicked}
+      />
+    )
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("Pick profile image"))
+    })
+
+    expect(onImagePicked).toHaveBeenCalledWith("file:///photo.heic", "image/heic")
+  })
 })

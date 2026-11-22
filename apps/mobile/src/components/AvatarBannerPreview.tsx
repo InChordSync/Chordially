@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Image, StyleSheet, View } from "react-native"
 
 interface Props {
@@ -13,6 +13,15 @@ interface Props {
 export default function AvatarBannerPreview({ avatarUri, bannerUri }: Props) {
   const [avatarError, setAvatarError] = useState(false);
   const [bannerError, setBannerError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false)
+  }, [avatarUri])
+
+  useEffect(() => {
+    setBannerError(false)
+  }, [bannerUri])
+
   return (
     <View testID="avatar-banner-preview">
       {bannerUri && !bannerError ? (
