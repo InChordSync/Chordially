@@ -33,30 +33,51 @@ export class ApiError extends Error {
   }
 }
 
+export class NetworkError extends Error {
+  constructor(message = "Network request failed") {
+    super(message)
+    this.name = "NetworkError"
+  }
+}
+
+let authTokenGetter: (() => string | null | Promise<string | null>) | null = null
+let onUnauthorized: (() => void | Promise<void>) | null = null
+
+export function setAuthTokenGetter(getter: (() => string | null | Promise<string | null>) | null) {
+  authTokenGetter = getter
+}
+
+export function setOnUnauthorized(handler: (() => void | Promise<void>) | null) {
+  onUnauthorized = handler
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const token = (await authTokenGetter?.()) ?? null
+  const headers = new Headers(options.headers ?? {})
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json")
+  if (token) headers.set("Authorization", `Bearer ${token}`)
+
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
+      headers,
     })
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error)
-    throw new ApiError(
-      0,
-      `Cannot reach API at ${API_BASE_URL}. Check EXPO_PUBLIC_API_URL and device/emulator networking. (${reason})`
-    )
+    const message = error instanceof Error ? error.message : "Network request failed"
+    throw new NetworkError(message)
   }
 
   const data: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
+    if (response.status === 401) {
+      await onUnauthorized?.()
+    }
+
     const message =
       data &&
       typeof data === "object" &&
