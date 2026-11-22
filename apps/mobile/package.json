@@ -12,6 +12,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@chordially/shared": "workspace:*",
     "expo": "~56.0.12",
     "expo-image-picker": "~56.0.18",
     "expo-status-bar": "~56.0.4",

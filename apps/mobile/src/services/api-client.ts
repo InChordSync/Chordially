@@ -20,8 +20,13 @@ function resolveDefaultApiBaseUrl(): string {
   return "http://localhost:4000"
 }
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? resolveDefaultApiBaseUrl()
+const ENV_API_BASE_URL = process.env.EXPO_PUBLIC_API_URL
+
+if (!__DEV__ && !ENV_API_BASE_URL) {
+  throw new Error("EXPO_PUBLIC_API_URL must be set for release builds")
+}
+
+export const API_BASE_URL = ENV_API_BASE_URL ?? resolveDefaultApiBaseUrl()
 
 export class ApiError extends Error {
   status: number
