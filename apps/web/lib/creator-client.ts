@@ -1,5 +1,5 @@
 import type { CreatorProfileResponse } from "@chordially/shared"
-import { apiFetch, authHeaders } from "./api-client"
+import { ApiError, apiFetch, authHeaders } from "./api-client"
 
 export function getCreatorBySlug(
   slug: string,
@@ -9,6 +9,10 @@ export function getCreatorBySlug(
     `/api/creators/${encodeURIComponent(slug)}`,
     { signal }
   )
+}
+
+export function isCreatorNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404
 }
 
 export interface CreatorSearchParams {

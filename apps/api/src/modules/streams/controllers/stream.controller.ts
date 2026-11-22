@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Req, Res, Next, Param, Body } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 import { streamService } from "../services/stream.service.js";
+import { startStreamSchema } from "../validators/stream.validators.js";
 import { toStreamResponse } from "../types/stream.types.js";
 
 @Controller('streams')
@@ -9,7 +10,7 @@ export class StreamController {
   async start(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
       const hostUserId = (req as any).userId!;
-      const { title } = body;
+      const { title } = startStreamSchema.parse(body ?? {});
       const stream = await streamService.startStream(hostUserId, title);
       return res.status(201).json(toStreamResponse(stream));
     } catch (error) { next(error); }
