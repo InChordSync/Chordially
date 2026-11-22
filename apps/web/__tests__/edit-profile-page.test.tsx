@@ -28,6 +28,8 @@ vi.mock("../lib/auth-client", () => ({
 
 const mockUpdateMe = vi.fn().mockResolvedValue({ ok: true })
 
+const mockGetAvatarUploadUrl = vi.fn()
+
 vi.mock("../lib/user-client", () => ({
   getMe: vi.fn().mockResolvedValue({
     user: {
@@ -57,6 +59,7 @@ vi.mock("../lib/user-client", () => ({
       },
     },
   }),
+  getAvatarUploadUrl: (...args: unknown[]) => mockGetAvatarUploadUrl(...args),
   updateMe: (...args: unknown[]) => mockUpdateMe(...args),
 }))
 
@@ -105,5 +108,39 @@ describe("EditProfilePage", () => {
     await user.click(screen.getByRole("button", { name: /save changes/i }))
 
     expect(await screen.findByRole("alert")).toBeInTheDocument()
+  })
+
+  it("shows avatar preview after upload (#1396)", async () => {
+    const user = userEvent.setup()
+    const originalCreateObjectURL = URL.createObjectURL
+    const originalRevokeObjectURL = URL.revokeObjectURL
+    URL.createObjectURL = vi.fn(() => "blob:preview")
+    URL.revokeObjectURL = vi.fn()
+
+    mockGetAvatarUploadUrl.mockResolvedValue({ uploadUrl: "https://upload.test", avatarUrl: "https://cdn.test/avatar.png" })
+    const OriginalXHR = globalThis.XMLHttpRequest
+    // @ts-expect-error test mock
+    globalThis.XMLHttpRequest = function () {
+      this.upload = {}
+      this.open = vi.fn()
+      this.setRequestHeader = vi.fn()
+      this.send = vi.fn(() => {
+        this.status = 200
+        this.onload?.()
+      })
+    }
+
+    render(<EditProfilePage />)
+    const file = new File(["img"], "avatar.png", { type: "image/png" })
+    const input = await screen.findByLabelText(/profile photo/i, { selector: "input" }).catch(() => null)
+    const fileInput = input ?? (document.querySelector('input[type="file"]') as HTMLElement)
+    await user.upload(fileInput, file)
+
+    expect(await screen.findByAltText("Profile photo preview")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /remove photo/i })).toBeInTheDocument()
+
+    globalThis.XMLHttpRequest = OriginalXHR
+    URL.createObjectURL = originalCreateObjectURL
+    URL.revokeObjectURL = originalRevokeObjectURL
   })
 })
