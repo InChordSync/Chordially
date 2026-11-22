@@ -11,6 +11,7 @@ export function RegisterForm() {
   const { register } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -41,6 +42,16 @@ export function RegisterForm() {
       setIsSubmitting(false)
     }
   }
+
+  const emailErrorId = "register-email-error"
+  const passwordErrorId = "register-password-error"
+  const passwordHelpId = "register-password-help"
+  const passwordDescribedBy = [
+    passwordHelpId,
+    fieldErrors.password ? passwordErrorId : null,
+  ]
+    .filter(Boolean)
+    .join(" ")
 
   return (
     <form onSubmit={handleSubmit} noValidate>

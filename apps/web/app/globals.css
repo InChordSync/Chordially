@@ -13,9 +13,13 @@ body {
 }
 
 main {
-  max-width: 28rem;
+  max-width: 64rem;
   margin: 0 auto;
   padding: 2rem 1.5rem;
+}
+
+.auth-layout {
+  max-width: 28rem;
 }
 
 form {

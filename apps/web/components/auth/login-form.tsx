@@ -11,6 +11,7 @@ export function LoginForm() {
   const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -38,6 +39,9 @@ export function LoginForm() {
       setIsSubmitting(false)
     }
   }
+
+  const emailErrorId = "login-email-error"
+  const passwordErrorId = "login-password-error"
 
   return (
     <form onSubmit={handleSubmit} noValidate>

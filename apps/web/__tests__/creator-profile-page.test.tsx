@@ -60,4 +60,12 @@ describe('CreatorProfilePage', () => {
     render(<CreatorProfilePage />)
     expect(await screen.findByLabelText('Default avatar')).toBeInTheDocument()
   })
+
+  it('renders main landmarks for loading and error states (#1394)', async () => {
+    const { getCreatorBySlug } = await import('../lib/creator-client')
+    vi.mocked(getCreatorBySlug).mockRejectedValueOnce(new Error('nope'))
+    render(<CreatorProfilePage />)
+    expect(await screen.findByRole('main')).toBeInTheDocument()
+    expect(screen.getByText('Not Found')).toBeInTheDocument()
+  })
 })

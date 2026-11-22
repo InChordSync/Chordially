@@ -1,7 +1,7 @@
 "use client"
 
 import { updateMeSchema, type UpdateMeInput } from "@chordially/shared"
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { ApiError } from "../../lib/api-client"
 import { mapZodIssues } from "../../lib/form-utils"
 import { getAvatarUploadUrl, updateMe } from "../../lib/user-client"
@@ -44,11 +44,23 @@ export function EditProfileForm({
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   async function handleFile(file: File) {
     setUploadError(null)
     setUploading(true)
     setUploadProgress(0)
+    const nextPreviewUrl = URL.createObjectURL(file)
+    setPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return nextPreviewUrl
+    })
     try {
       const { uploadUrl, avatarUrl } = await getAvatarUploadUrl(
         token,
@@ -63,6 +75,14 @@ export function EditProfileForm({
     } finally {
       setUploading(false)
     }
+  }
+
+  function handleRemovePhoto() {
+    setAvatarUrl(null)
+    setPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return null
+    })
   }
 
   function putFile(url: string, file: File): Promise<void> {
@@ -179,6 +199,19 @@ export function EditProfileForm({
 
       <div>
         <label>Profile Photo</label>
+        {(previewUrl || avatarUrl) && (
+          <div>
+            <img
+              src={previewUrl ?? avatarUrl ?? undefined}
+              alt="Profile photo preview"
+              width={96}
+              height={96}
+            />
+            <button type="button" onClick={handleRemovePhoto}>
+              Remove photo
+            </button>
+          </div>
+        )}
         <MediaUploadControl onFileValid={handleFile} />
         {uploading && <p role="status">Uploading... {uploadProgress}%</p>}
         {uploadError && <p role="alert">{uploadError}</p>}
