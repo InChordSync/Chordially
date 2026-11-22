@@ -6,6 +6,7 @@ export interface CreatorItem {
   id: string
   displayName: string
   slug: string
+  avatarUrl?: string | null
   followerCount: number
   isFollowing?: boolean
 }
@@ -56,6 +57,8 @@ export function FanExploreScreen({
     }
   }
 
+  const isInitialLoading = creators.length === 0 && (isRefreshing || isLoadingMore)
+
   return (
     <View style={styles.container} testID="fan-explore-screen">
       <FlatList
@@ -66,6 +69,7 @@ export function FanExploreScreen({
             id={item.id}
             displayName={item.displayName}
             slug={item.slug}
+            avatarUrl={item.avatarUrl}
             followerCount={item.followerCount}
             isFollowing={item.isFollowing}
             onFollowToggle={onFollowToggle}
@@ -82,10 +86,20 @@ export function FanExploreScreen({
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
         ListHeaderComponent={<Text style={styles.headerTitle}>Explore Creators</Text>}
+        ListEmptyComponent={
+          isInitialLoading ? (
+            <ActivityIndicator style={{ marginVertical: 24 }} color="#6366f1" />
+          ) : (
+            <View style={styles.emptyContainer} testID="explore-empty-state">
+              <Text style={styles.emptyTitle}>No creators to show</Text>
+              <Text style={styles.emptySubtitle}>Pull down to refresh and try again.</Text>
+            </View>
+          )
+        }
         ListFooterComponent={
           isLoadingMore ? (
             <ActivityIndicator style={{ marginVertical: 16 }} size="small" color="#6366f1" />
-          ) : !hasMore ? (
+          ) : !hasMore && creators.length > 0 ? (
             <Text style={{ textAlign: "center", color: "#64748b", marginVertical: 16, fontSize: 14 }} testID="no-more-results">
               No more results
             </Text>
@@ -100,12 +114,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0f172a",
-    padding: 16,
+    paddingHorizontal: 16,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#ffffff",
-    marginBottom: 16,
+    marginVertical: 16,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    color: "#e2e8f0",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    color: "#94a3b8",
+    fontSize: 14,
+    textAlign: "center",
   },
 })
