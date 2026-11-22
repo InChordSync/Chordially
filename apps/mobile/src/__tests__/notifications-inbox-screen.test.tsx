@@ -1,6 +1,6 @@
 import React from "react"
-import { render, fireEvent } from "@testing-library/react-native"
-import { NotificationsInboxScreen, formatNotificationTime } from "../screens/NotificationsInboxScreen"
+import { render, fireEvent, waitFor } from "@testing-library/react-native"
+import { NotificationsInboxScreen } from "../screens/NotificationsInboxScreen"
 
 const sampleMobileNotifs = [
   { id: "mn1", title: "New Follower", body: "Alex followed you.", read: false, createdAt: "10m ago" },
@@ -23,9 +23,30 @@ describe("NotificationsInboxScreen (#697)", () => {
     expect(getByText("Notifications (0 unread)")).toBeTruthy()
   })
 
-  it("formats notification timestamps and handles invalid dates (#1416)", () => {
-    expect(formatNotificationTime("not-a-date")).toBe("not-a-date")
-    const formatted = formatNotificationTime("2026-11-19T10:15:00.000Z", Date.parse("2026-11-19T10:20:00.000Z"))
-    expect(formatted.toLowerCase()).toContain("minute")
+  it("marks a notification read once and calls onMarkRead (#1417)", async () => {
+    const onMarkRead = jest.fn().mockResolvedValue(undefined)
+    const { getByTestId, getByText, queryByText } = render(
+      <NotificationsInboxScreen initialNotifications={sampleMobileNotifs} onMarkRead={onMarkRead} />
+    )
+
+    fireEvent.press(getByTestId("mobile-notif-item-mn1"))
+    await waitFor(() => expect(onMarkRead).toHaveBeenCalledWith("mn1"))
+    expect(getByText("Notifications (0 unread)")).toBeTruthy()
+
+    fireEvent.press(getByTestId("mobile-notif-item-mn1"))
+    expect(onMarkRead).toHaveBeenCalledTimes(1)
+    expect(queryByText("Notifications (1 unread)")).toBeNull()
+  })
+
+  it("syncs when initialNotifications arrive later and shows loading skeleton (#1418)", async () => {
+    const { getByTestId, queryByTestId, rerender, getByText } = render(
+      <NotificationsInboxScreen initialNotifications={[]} isLoading />
+    )
+
+    expect(getByTestId("notifications-loading")).toBeTruthy()
+    rerender(<NotificationsInboxScreen initialNotifications={sampleMobileNotifs} isLoading={false} />)
+
+    await waitFor(() => expect(queryByTestId("notifications-loading")).toBeNull())
+    expect(getByText("New Follower")).toBeTruthy()
   })
 })

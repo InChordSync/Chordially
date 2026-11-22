@@ -17,9 +17,13 @@ const BIO_MAX_LENGTH = 300
 /** Minimal mobile form for editing bio, location, and one social link. */
 export default function EditCreatorProfileScreen({ initial, onSave }: Props) {
   const [fields, setFields] = useState(initial)
+  const [socialLinkError, setSocialLinkError] = useState<string | null>(null)
+  const socialLinkRef = useRef<TextInput>(null)
 
-  const update = <K extends keyof EditableCreatorFields>(key: K, value: string) =>
+  const update = <K extends keyof EditableCreatorFields>(key: K, value: string) => {
     setFields((prev) => ({ ...prev, [key]: value }))
+    if (key === "socialLink") setSocialLinkError(null)
+  }
 
   const rows: [keyof EditableCreatorFields, string, boolean?][] = [
     ["bio", "Bio", true],
@@ -93,6 +97,7 @@ export default function EditCreatorProfileScreen({ initial, onSave }: Props) {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: { padding: 20 },
   label: { fontSize: 14, fontWeight: "600", marginTop: 12 },
   input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 8, marginTop: 4 },
