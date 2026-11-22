@@ -3,7 +3,35 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://api.chordially.
 const TOKEN_STORAGE_KEY = "chordially.token"
 const REFRESH_TOKEN_STORAGE_KEY = "chordially.refreshToken"
 const USER_STORAGE_KEY = "chordially.user"
+const AUTH_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password"]
 
+export const UNAUTHORIZED_EVENT = "chordially:auth:unauthorized"
+
+export function clearStoredAuth(): void {
+  if (typeof window === "undefined") return
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(USER_STORAGE_KEY)
+}
+
+export function handleUnauthorized(): void {
+  if (typeof window === "undefined") return
+
+  clearStoredAuth()
+  window.dispatchEvent(new Event(UNAUTHORIZED_EVENT))
+
+  const { pathname, search, hash } = window.location
+  if (AUTH_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
+    return
+  }
+
+  const next = `${pathname}${search}${hash}`
+  const loginUrl = new URL("/login", window.location.origin)
+  if (next && next !== "/login") {
+    loginUrl.searchParams.set("next", next)
+  }
+  window.location.assign(loginUrl.toString())
+}
 export class ApiError extends Error {
   status: number
 
@@ -14,18 +42,7 @@ export class ApiError extends Error {
   }
 }
 
-function clearAuthStorage() {
-  if (typeof window === "undefined") return
-  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
-  window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
-  window.localStorage.removeItem(USER_STORAGE_KEY)
-}
-
-export function handleUnauthorized(): void {
-  if (typeof window === "undefined") return
-  clearAuthStorage()
-  window.location.assign("/login")
-}
+// handleUnauthorized and clearStoredAuth defined above.
 
 let refreshPromise: Promise<string | null> | null = null
 

@@ -2,7 +2,7 @@
 
 import type { CreatorProfileResponse } from "@chordially/shared"
 import { useParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { CreatorHeader } from "../../../components/profile/creator-header"
 import { getCreatorBySlug } from "../../../lib/creator-client"
 
@@ -13,20 +13,34 @@ type LoadState =
 
 export default function CreatorProfilePage() {
   const params = useParams<{ slug: string }>()
+  const slug = params.slug
   const [state, setState] = useState<LoadState>({ status: "loading" })
 
-  const load = useCallback(async () => {
-    try {
-      const profile = await getCreatorBySlug(params.slug)
-      setState({ status: "ok", profile })
-    } catch {
-      setState({ status: "error", message: "Creator not found" })
-    }
-  }, [params.slug])
-
   useEffect(() => {
-    load()
-  }, [load])
+    const controller = new AbortController()
+    let active = true
+
+    setState({ status: "loading" })
+
+    async function load() {
+      try {
+        const profile = await getCreatorBySlug(slug, controller.signal)
+        if (!active || controller.signal.aborted) return
+        setState({ status: "ok", profile })
+      } catch (error) {
+        if (!active || controller.signal.aborted) return
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setState({ status: "error", message: "Creator not found" })
+      }
+    }
+
+    void load()
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [slug])
 
   if (state.status === "loading") {
     return (

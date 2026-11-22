@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react"
 import { loginUser, registerUser } from "./auth-client"
+import { UNAUTHORIZED_EVENT } from "./api-client"
 import { getMe } from "./user-client"
 
 const TOKEN_STORAGE_KEY = "chordially.token"
@@ -50,6 +51,7 @@ function isTokenExpired(token: string): boolean {
 
 function clearStoredAuth() {
   window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
   window.localStorage.removeItem(USER_STORAGE_KEY)
 }
 
@@ -102,6 +104,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    const handleAuthUnauthorized = () => {
+      clearStoredAuth()
+      setUser(null)
+      setToken(null)
+      setRefreshToken(null)
+    }
+
+    window.addEventListener(UNAUTHORIZED_EVENT, handleAuthUnauthorized)
+    return () => {
+      window.removeEventListener(UNAUTHORIZED_EVENT, handleAuthUnauthorized)
+    }
+  }, [])
+
+  useEffect(() => {
     function onStorage(event: StorageEvent) {
       if (event.key !== TOKEN_STORAGE_KEY && event.key !== USER_STORAGE_KEY) return
       const nextToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
@@ -110,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!nextToken || !nextUserRaw) {
         setUser(null)
         setToken(null)
+        setRefreshToken(null)
         return
       }
 

@@ -2,9 +2,13 @@ import type { CreatorProfileResponse } from "@chordially/shared"
 import { apiFetch, authHeaders } from "./api-client"
 
 export function getCreatorBySlug(
-  slug: string
+  slug: string,
+  signal?: AbortSignal
 ): Promise<CreatorProfileResponse> {
-  return apiFetch<CreatorProfileResponse>(`/api/creators/${encodeURIComponent(slug)}`)
+  return apiFetch<CreatorProfileResponse>(
+    `/api/creators/${encodeURIComponent(slug)}`,
+    { signal }
+  )
 }
 
 export interface CreatorSearchParams {
@@ -22,7 +26,8 @@ export interface CreatorSearchResult {
 
 export function searchCreators(
   params: CreatorSearchParams,
-  token?: string
+  token?: string,
+  signal?: AbortSignal
 ): Promise<CreatorSearchResult[]> {
   const query = new URLSearchParams()
   if (params.genre) query.set("genre", params.genre)
@@ -34,5 +39,6 @@ export function searchCreators(
 
   return apiFetch<CreatorSearchResult[]>(path, {
     headers: token ? authHeaders(token) : undefined,
+    signal,
   })
 }

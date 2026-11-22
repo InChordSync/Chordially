@@ -9,4 +9,4 @@ This document outlines the local mock API server mode configuration, artificial 
    - `mockServerConfigSchema`: Zod schema validating route patterns, artificial delays, and failure simulation rates.
 
 2. **Web Toggle Integration**:
-   - `apps/web/src/lib/mock-api-server-toggle.ts`: Utility function `isMockApiServerEnabled` checking environment flags and query params.
+   - `apps/web/lib/mock-api-server-toggle.ts`: Utility function `isMockApiServerEnabled` checking environment flags and query params.
