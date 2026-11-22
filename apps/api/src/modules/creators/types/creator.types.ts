@@ -40,8 +40,6 @@ export interface CreatorResponse extends CreatorProfileResponse {
   genre: string | null
   location: string | null
   isVerified: boolean
-  followerCount: number
-  trackCount: number
   createdAt: string
   updatedAt: string
   /** See the stubbing note on {@link toCreatorResponse} below (N-036). */
@@ -79,8 +77,6 @@ export function toCreatorResponse(profile: CreatorProfile): CreatorResponse {
     genre: profile.genre,
     location: profile.location,
     isVerified: profile.isVerified,
-    followerCount: 0,
-    trackCount: 0,
     createdAt: profile.createdAt.toISOString(),
     updatedAt: profile.updatedAt.toISOString(),
     followerCount: STUBBED_FOLLOWER_COUNT,

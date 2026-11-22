@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Param, Body, Req, Res, Next } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Req, Res, Next, UseGuards } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 import { creatorPayoutService } from "../services/creator-payout.service.js";
-import { createCreatorPayoutSchema } from "../validators/creator-payout.validators.js";
+import { checkEligibilitySchema, createCreatorPayoutSchema } from "../validators/creator-payout.validators.js";
+import { WebhookProvider, WebhookVerificationGuard } from "../../../shared/guards/webhook-verification.guard.js";
 
 @Controller('creator-payouts')
 export class CreatorPayoutController {
@@ -22,6 +23,8 @@ export class CreatorPayoutController {
   }
 
   @Post('webhook')
+  @UseGuards(WebhookVerificationGuard)
+  @WebhookProvider('creator-payout')
   async handleWebhook(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
       // N-074 anchor webhook placeholder
@@ -30,9 +33,15 @@ export class CreatorPayoutController {
   }
 
   @Post('eligibility')
-  async checkEligibility(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
+  async checkEligibility(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      return res.status(200).json({ eligible: true });
+      const { amount, assetCode } = checkEligibilitySchema.parse(body ?? {});
+      const result = await creatorPayoutService.checkEligibility(
+        (req as any).userId!,
+        amount,
+        assetCode
+      );
+      return res.status(200).json(result);
     } catch (error) { next(error); }
   }
 
