@@ -8,7 +8,7 @@ This document details the single-use nonce validation rules, replay prevention c
    - `apps/api/src/modules/wallet/services/challenge-replay-protection.service.ts`: `ChallengeReplayProtectionService` maintaining consumed nonce sets.
 
 2. **Web Client Freshness Guard**:
-   - `apps/web/src/lib/wallet-replay-guard-client.ts`: Utility function `isChallengeNonceFresh`.
+   - `apps/web/lib/wallet-replay-guard-client.ts`: Utility function `isChallengeNonceFresh`.
 
 3. **Validation Schemas & Interfaces**:
    - `challengeValidationResultSchema` and `ChallengeValidationResult` defined in `@chordially/shared`.

@@ -1,7 +1,7 @@
 import React from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import { DiscoveryEmptyState } from "../src/components/DiscoveryEmptyState"
+import { DiscoveryEmptyState } from "../components/DiscoveryEmptyState"
 
 describe("DiscoveryEmptyState Component (#687)", () => {
   it("renders query message and suggestions", () => {

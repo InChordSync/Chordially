@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { loginUser, registerUser } from "./auth-client"
-import { handleUnauthorized } from "./api-client"
+import { UNAUTHORIZED_EVENT, clearStoredAuth } from "./api-client"
 
 const TOKEN_STORAGE_KEY = "chordially.token"
 const USER_STORAGE_KEY = "chordially.user"
@@ -46,6 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(false)
+  }, [])
+
+  useEffect(() => {
+    const handleAuthUnauthorized = () => {
+      clearStoredAuth()
+      setUser(null)
+      setToken(null)
+    }
+
+    window.addEventListener(UNAUTHORIZED_EVENT, handleAuthUnauthorized)
+    return () => {
+      window.removeEventListener(UNAUTHORIZED_EVENT, handleAuthUnauthorized)
+    }
   }, [])
 
   const persist = useCallback((nextUser: AuthUser, nextToken: string) => {

@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { DiscoveryEmptyState } from "../../src/components/DiscoveryEmptyState"
+import { DiscoveryEmptyState } from "../../components/DiscoveryEmptyState"
+import { searchCreators, type CreatorSearchResult } from "../../lib/creator-client"
 
 const GENRES = ["Any", "Hip-Hop", "Pop", "Electronic", "Rock", "Jazz"]
 
@@ -16,9 +17,8 @@ export default function DiscoverPage() {
   const [location, setLocation] = useState("")
   const [liveOnly, setLiveOnly] = useState(false)
   const [debouncedLocation, setDebouncedLocation] = useState("")
-  const [results, setResults] = useState<string[]>([])
-  const [hasSearched, setHasSearched] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [searchState, setSearchState] = useState<SearchState>({ status: "idle" })
+  const [searchVersion, setSearchVersion] = useState(0)
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -27,10 +27,44 @@ export default function DiscoverPage() {
     return () => clearTimeout(handler)
   }, [location])
 
+  useEffect(() => {
+    if (searchVersion === 0) return
+
+    const controller = new AbortController()
+    let active = true
+    setSearchState({ status: "loading" })
+
+    const activeGenre = genre === "Any" ? undefined : genre
+    searchCreators(
+      {
+        genre: activeGenre,
+        location: debouncedLocation.trim() || undefined,
+        liveOnly: liveOnly || undefined,
+      },
+      undefined,
+      controller.signal
+    )
+      .then((results) => {
+        if (!active || controller.signal.aborted) return
+        setSearchState({ status: "ok", results })
+      })
+      .catch((error) => {
+        if (!active || controller.signal.aborted) return
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setSearchState({
+          status: "error",
+          message: error instanceof Error ? error.message : "Failed to search creators",
+        })
+      })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [debouncedLocation, genre, liveOnly, searchVersion])
+
   function applyFilters() {
-    setError(null)
-    setResults([])
-    setHasSearched(true)
+    setSearchVersion((v) => v + 1)
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -47,16 +81,17 @@ export default function DiscoverPage() {
     setLocation("")
     setDebouncedLocation("")
     setLiveOnly(false)
-    setResults([])
-    setHasSearched(false)
-    setError(null)
+    setSearchState({ status: "idle" })
+    setSearchVersion(0)
   }
 
   function handleSuggestionClick(suggestion: string) {
     setGenre(suggestion)
+    setSearchVersion((v) => v + 1)
   }
 
   const activeGenre = genre === "Any" ? "" : genre
+  const results = searchState.status === "ok" ? searchState.results : []
 
   return (
     <main>
@@ -94,22 +129,37 @@ export default function DiscoverPage() {
         <button type="submit">Apply</button>
       </form>
 
-      {error && (
+      {searchState.status === "loading" && <p role="status">Loading creators…</p>}
+
+      {searchState.status === "error" && (
         <div role="alert">
-          <p>{error}</p>
+          <p>{searchState.message}</p>
           <button type="button" onClick={handleRetry}>
             Retry
           </button>
         </div>
       )}
 
-      {!error && hasSearched && results.length === 0 && (
+      {searchState.status === "ok" && results.length === 0 && (
         <DiscoveryEmptyState
           query={debouncedLocation}
           activeGenre={activeGenre}
           onResetFilters={handleResetFilters}
           onSuggestionClick={handleSuggestionClick}
         />
+      )}
+
+      {searchState.status === "ok" && results.length > 0 && (
+        <ul>
+          {results.map((creator) => (
+            <li key={creator.slug}>
+              <span>{creator.displayName}</span>
+              {typeof creator.followerCount === "number" && (
+                <span> - {creator.followerCount} followers</span>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </main>
   )

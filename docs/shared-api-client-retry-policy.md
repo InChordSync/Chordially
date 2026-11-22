@@ -9,4 +9,4 @@ This document details the shared exponential backoff and retry policy implementa
    - `retryPolicyOptionsSchema`: Zod schema defining max retry limits, backoff factors, and retryable status codes (408, 429, 500, 502, 503, 504).
 
 2. **Web Client Integration**:
-   - `apps/web/src/lib/api-retry-client-wrapper.ts`: Wrapper around `fetch` incorporating automatic transient error retries.
+   - `apps/web/lib/api-retry-client-wrapper.ts`: Wrapper around `fetch` incorporating automatic transient error retries.

@@ -187,7 +187,7 @@ for user, issues in users_issues.items():
             f.write(content.replace(target, replacement))
             
     elif user == "digitalencode":
-        file_path = "apps/web/src/lib/client-logger-formatter.ts"
+        file_path = "apps/web/lib/client-logger-formatter.ts"
         with open(file_path, "w") as f:
             f.write('''export function logClientEvent(\n  eventMessage: string, \n  meta?: Record<string, unknown>,\n  level: "info" | "warn" | "error" = "info",\n  correlationId?: string\n): void {\n  const logData = {\n    level,\n    eventMessage,\n    correlationId: correlationId ?? `corr-${Math.random().toString(36).substring(2, 11)}`,\n    meta: meta ?? {},\n    timestamp: new Date().toISOString(),\n  };\n  console.log(JSON.stringify(logData));\n}\n''')
             
