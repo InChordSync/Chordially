@@ -1,5 +1,6 @@
-import React, { useState } from "react"
+import React, { useCallback, useState } from "react"
 import { View, FlatList, RefreshControl, Text, StyleSheet, ActivityIndicator } from "react-native"
+import { StatusBar } from "expo-status-bar"
 import { CompactCreatorCard } from "../components/CompactCreatorCard"
 
 export interface CreatorItem {
@@ -56,21 +57,29 @@ export function FanExploreScreen({
     }
   }
 
+  const renderItem = useCallback(
+    ({ item }: { item: CreatorItem }) => (
+      <CompactCreatorCard
+        id={item.id}
+        displayName={item.displayName}
+        slug={item.slug}
+        followerCount={item.followerCount}
+        isFollowing={item.isFollowing}
+        onFollowToggle={onFollowToggle}
+      />
+    ),
+    [onFollowToggle],
+  )
+
   return (
     <View style={styles.container} testID="fan-explore-screen">
+      <StatusBar style="light" />
       <FlatList
         data={creators}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <CompactCreatorCard
-            id={item.id}
-            displayName={item.displayName}
-            slug={item.slug}
-            followerCount={item.followerCount}
-            isFollowing={item.isFollowing}
-            onFollowToggle={onFollowToggle}
-          />
-        )}
+        renderItem={renderItem}
+        getItemLayout={(_, index) => ({ length: 76, offset: 76 * index, index })}
+        windowSize={7}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}

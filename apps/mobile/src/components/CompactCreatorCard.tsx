@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { memo, useCallback, useState } from "react"
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native"
 
 export interface CompactCreatorCardProps {
@@ -10,7 +10,7 @@ export interface CompactCreatorCardProps {
   onFollowToggle?: (creatorId: string, currentFollowing: boolean) => Promise<boolean>
 }
 
-export function CompactCreatorCard({
+export const CompactCreatorCard = memo(function CompactCreatorCard({
   id,
   displayName,
   slug,
@@ -22,7 +22,7 @@ export function CompactCreatorCard({
   const [followerCount, setFollowerCount] = useState(initialFollowerCount)
   const [isLoading, setIsLoading] = useState(false)
 
-  const handlePressFollow = async () => {
+  const handlePressFollow = useCallback(async () => {
     if (isLoading) return
 
     const prevFollowing = following
@@ -46,7 +46,7 @@ export function CompactCreatorCard({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [followerCount, following, id, isLoading, onFollowToggle])
 
   return (
     <View style={styles.cardContainer} testID={`compact-creator-card-${id}`}>
@@ -78,7 +78,7 @@ export function CompactCreatorCard({
       </TouchableOpacity>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   cardContainer: {
