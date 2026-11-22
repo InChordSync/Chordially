@@ -1,7 +1,13 @@
 import { PipeTransform, Injectable } from '@nestjs/common';
 import { AppError } from "../errors/app-error.js";
 
-const ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_CONTENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
 
 @Injectable()
 export class ImageContentTypePipe implements PipeTransform {
