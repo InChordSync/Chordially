@@ -1,4 +1,5 @@
 import React from "react"
+import { CREATOR_GENRES } from "@chordially/shared"
 
 export interface DiscoveryEmptyStateProps {
   query?: string
@@ -13,7 +14,7 @@ export function DiscoveryEmptyState({
   onResetFilters,
   onSuggestionClick,
 }: DiscoveryEmptyStateProps) {
-  const suggestions = ["Pop", "Indie Rock", "Electronic", "Acoustic", "Jazz"]
+  const suggestions = CREATOR_GENRES
 
   return (
     <div className="discovery-empty-state p-8 text-center bg-slate-800/50 rounded-xl border border-slate-700/60 max-w-md mx-auto my-6" data-testid="discovery-empty-state">
