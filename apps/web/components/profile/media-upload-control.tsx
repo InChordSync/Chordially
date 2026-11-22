@@ -2,14 +2,17 @@
 
 import { useState, type ChangeEvent } from "react"
 
-export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const
-export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
-
-const ALLOWED_TYPES: readonly string[] = ALLOWED_IMAGE_TYPES
-const MAX_SIZE_BYTES = MAX_IMAGE_SIZE_BYTES
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
+const MAX_SIZE_BYTES = 5 * 1024 * 1024
 
 interface MediaUploadControlProps {
   onFileValid: (file: File) => void
+}
+
+function hasAllowedExtension(name: string): boolean {
+  const lower = name.toLowerCase()
+  return ALLOWED_EXTENSIONS.some((ext) => lower.endsWith(ext))
 }
 
 /** Validates a media file's type/size client-side before it is uploaded. */
@@ -18,9 +21,14 @@ export function MediaUploadControl({ onFileValid }: MediaUploadControlProps) {
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
+    // Allow re-selecting the same file (#1369)
+    event.target.value = ""
+
     if (!file) return
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    const typeAllowed = ALLOWED_TYPES.includes(file.type) || (!file.type && hasAllowedExtension(file.name))
+    const extensionAllowed = hasAllowedExtension(file.name)
+    if (!typeAllowed && !extensionAllowed) {
       setError("Please choose a JPEG, PNG, or WebP image")
       return
     }
