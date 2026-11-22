@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   Image,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -22,6 +24,7 @@ interface Props {
 
 export default function CreatorProfileScreen({ slug }: Props) {
   const [state, setState] = useState<LoadState>({ status: "loading" })
+  const [refreshing, setRefreshing] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -33,7 +36,16 @@ export default function CreatorProfileScreen({ slug }: Props) {
   }, [slug])
 
   useEffect(() => {
-    load()
+    void load()
+  }, [load])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      await load()
+    } finally {
+      setRefreshing(false)
+    }
   }, [load])
 
   if (state.status === "loading") {
@@ -46,16 +58,21 @@ export default function CreatorProfileScreen({ slug }: Props) {
 
   if (state.status === "error") {
     return (
-      <View style={styles.center}>
+      <ScrollView contentContainerStyle={styles.center} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <Text>{state.message}</Text>
-      </View>
+      </ScrollView>
     )
   }
 
   const { profile } = state
+  const nameLabel = profile.isVerified ? `${profile.displayName}, verified creator` : profile.displayName
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       {profile.avatarUrl ? (
         <Image
           source={{ uri: profile.avatarUrl }}
@@ -69,9 +86,12 @@ export default function CreatorProfileScreen({ slug }: Props) {
         />
       )}
 
-      <Text style={styles.displayName}>{profile.displayName}</Text>
-
-      {profile.isVerified && <Text accessibilityLabel="Verified">Verified</Text>}
+      <Text style={styles.displayName} accessibilityLabel={nameLabel}>
+        {profile.displayName}
+        {profile.isVerified ? (
+          <Text accessibilityElementsHidden importantForAccessibility="no-hide-descendants"> Verified</Text>
+        ) : null}
+      </Text>
 
       {profile.bio && <Text style={styles.bio}>{profile.bio}</Text>}
 
@@ -82,7 +102,7 @@ export default function CreatorProfileScreen({ slug }: Props) {
       {profile.location && (
         <Text style={styles.detail}>Location: {profile.location}</Text>
       )}
-    </View>
+    </ScrollView>
   )
 }
 
@@ -94,6 +114,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  content: {
     padding: 20,
     alignItems: "center",
   },
