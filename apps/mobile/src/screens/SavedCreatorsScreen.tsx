@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native"
+import { StatusBar } from "expo-status-bar"
 import { CompactCreatorCard } from "../components/CompactCreatorCard"
+
+let globalSavedCreatorsCache: SavedCreatorItem[] | null = null;
 
 export interface SavedCreatorItem {
   id: string
@@ -58,6 +61,7 @@ export function SavedCreatorsScreen({
 
   return (
     <View style={styles.container} testID="saved-creators-screen">
+      <StatusBar style="light" />
       <Text style={styles.headerTitle}>Saved Creators</Text>
 
       {savedCreators.length === 0 ? (

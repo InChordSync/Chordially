@@ -1,4 +1,8 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://api.chordially.local"
+
+const TOKEN_STORAGE_KEY = "chordially.token"
+const REFRESH_TOKEN_STORAGE_KEY = "chordially.refreshToken"
+const USER_STORAGE_KEY = "chordially.user"
 
 export class ApiError extends Error {
   status: number
@@ -10,30 +14,102 @@ export class ApiError extends Error {
   }
 }
 
+function clearAuthStorage() {
+  if (typeof window === "undefined") return
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(USER_STORAGE_KEY)
+}
+
+export function handleUnauthorized(): void {
+  if (typeof window === "undefined") return
+  clearAuthStorage()
+  window.location.assign("/login")
+}
+
+let refreshPromise: Promise<string | null> | null = null
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null
+  const refreshToken = window.localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
+  if (!refreshToken) return null
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: JSON.stringify({ refreshToken }),
+        })
+
+        const data: any = await response.json().catch(() => null)
+        if (!response.ok) return null
+
+        const nextToken = data?.accessToken ?? data?.token
+        const nextRefreshToken = data?.refreshToken
+        if (typeof nextToken !== "string" || typeof nextRefreshToken !== "string") return null
+
+        window.localStorage.setItem(TOKEN_STORAGE_KEY, nextToken)
+        window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, nextRefreshToken)
+        if (data?.user) {
+          window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user))
+        }
+        return nextToken
+      } catch {
+        return null
+      } finally {
+        refreshPromise = null
+      }
+    })()
+  }
+
+  return refreshPromise
+}
+
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  _retried = false
 ): Promise<T> {
+  const token = typeof window !== "undefined" ? window.localStorage.getItem(TOKEN_STORAGE_KEY) : null
+  const headers = new Headers(options.headers ?? {})
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json")
+  if (!headers.has("X-Requested-With")) headers.set("X-Requested-With", "XMLHttpRequest")
+  if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`)
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    credentials: "include",
+    headers,
   })
 
   const data: unknown = await response.json().catch(() => null)
 
   if (!response.ok) {
+    if (response.status === 401 && !_retried) {
+      const refreshed = await refreshAccessToken()
+      if (refreshed) {
+        return apiFetch<T>(path, options, true)
+      }
+      handleUnauthorized()
+    } else if (response.status === 401) {
+      handleUnauthorized()
+    }
+
     const message =
       data &&
       typeof data === "object" &&
       "error" in data &&
-      data.error &&
-      typeof data.error === "object" &&
-      "message" in data.error &&
-      typeof data.error.message === "string"
-        ? data.error.message
+      (data as any).error &&
+      typeof (data as any).error === "object" &&
+      "message" in (data as any).error &&
+      typeof (data as any).error.message === "string"
+        ? (data as any).error.message
         : "Something went wrong"
 
     throw new ApiError(response.status, message)

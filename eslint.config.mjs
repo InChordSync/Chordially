@@ -11,6 +11,7 @@ export default tseslint.config(
       "**/.expo/**",
       "**/coverage/**",
       "**/generated/**",
+      "packages/stellar/src/contracts/**",
       "**/next-env.d.ts"
     ]
   },

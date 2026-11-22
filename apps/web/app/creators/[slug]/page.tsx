@@ -3,6 +3,7 @@
 import type { CreatorProfileResponse } from "@chordially/shared"
 import { useParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { CreatorHeader } from "../../../components/profile/creator-header"
 import { getCreatorBySlug } from "../../../lib/creator-client"
 
 type LoadState =
@@ -28,15 +29,19 @@ export default function CreatorProfilePage() {
   }, [load])
 
   if (state.status === "loading") {
-    return <p>Loading…</p>
+    return (
+      <main>
+        <p role="status">Loading…</p>
+      </main>
+    )
   }
 
   if (state.status === "error") {
     return (
-      <div>
+      <main>
         <h1>Not Found</h1>
         <p>{state.message}</p>
-      </div>
+      </main>
     )
   }
 
@@ -44,28 +49,12 @@ export default function CreatorProfilePage() {
 
   return (
     <main>
-      <div>
-        {profile.avatarUrl ? (
-          <img
-            src={profile.avatarUrl}
-            alt={`${profile.displayName}'s avatar`}
-            width={120}
-            height={120}
-          />
-        ) : (
-          <div
-            aria-label="Default avatar"
-            style={{
-              width: 120,
-              height: 120,
-              borderRadius: "50%",
-              background: "#ddd",
-            }}
-          />
-        )}
-      </div>
-
-      <h1>{profile.displayName}</h1>
+      <CreatorHeader
+        displayName={profile.displayName}
+        avatarUrl={profile.avatarUrl}
+        bannerUrl={null}
+        isVerified={profile.isVerified}
+      />
 
       {profile.bio && <p>{profile.bio}</p>}
 
@@ -83,8 +72,6 @@ export default function CreatorProfilePage() {
           </>
         )}
       </dl>
-
-      {profile.isVerified && <span aria-label="Verified">Verified</span>}
     </main>
   )
 }

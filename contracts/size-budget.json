@@ -1,0 +1,5 @@
+{
+  "default": 65536,
+  "overrides": {},
+  "notes": "Optimised WASM budget in bytes. Set after measuring each contract with ~25% headroom; document every override here."
+}

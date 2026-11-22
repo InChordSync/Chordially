@@ -6,17 +6,21 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react"
 import { loginUser, registerUser } from "./auth-client"
+import { getMe } from "./user-client"
 
 const TOKEN_STORAGE_KEY = "chordially.token"
+const REFRESH_TOKEN_STORAGE_KEY = "chordially.refreshToken"
 const USER_STORAGE_KEY = "chordially.user"
 
 interface AuthContextValue {
   user: AuthUser | null
   token: string | null
+  refreshToken: string | null
   isLoading: boolean
   login: (input: LoginInput) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
@@ -25,34 +29,117 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+function decodeJwtExp(token: string): number | null {
+  try {
+    const parts = token.split(".")
+    if (parts.length < 2) return null
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")
+    const payload = JSON.parse(atob(padded)) as { exp?: unknown }
+    return typeof payload.exp === "number" ? payload.exp : null
+  } catch {
+    return null
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  const exp = decodeJwtExp(token)
+  if (exp === null) return false
+  return exp * 1000 <= Date.now()
+}
+
+function clearStoredAuth() {
+  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(USER_STORAGE_KEY)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
-    const storedUser = window.localStorage.getItem(USER_STORAGE_KEY)
+    let cancelled = false
 
-    if (storedToken && storedUser) {
-      setToken(storedToken)
-      setUser(JSON.parse(storedUser) as AuthUser)
+    async function hydrate() {
+      const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
+      const storedUser = window.localStorage.getItem(USER_STORAGE_KEY)
+
+      if (!storedToken || !storedUser) {
+        if (!cancelled) setIsLoading(false)
+        return
+      }
+
+      if (isTokenExpired(storedToken)) {
+        clearStoredAuth()
+        if (!cancelled) setIsLoading(false)
+        return
+      }
+
+      try {
+        const parsedUser = JSON.parse(storedUser) as AuthUser
+        const me = await getMe(storedToken)
+        if (cancelled) return
+        setToken(storedToken)
+        setUser(me.user ?? parsedUser)
+        window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(me.user ?? parsedUser))
+      } catch {
+        clearStoredAuth()
+        if (!cancelled) {
+          setUser(null)
+          setToken(null)
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
     }
 
-    setIsLoading(false)
+    void hydrate()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const persist = useCallback((nextUser: AuthUser, nextToken: string) => {
+  useEffect(() => {
+    function onStorage(event: StorageEvent) {
+      if (event.key !== TOKEN_STORAGE_KEY && event.key !== USER_STORAGE_KEY) return
+      const nextToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
+      const nextUserRaw = window.localStorage.getItem(USER_STORAGE_KEY)
+
+      if (!nextToken || !nextUserRaw) {
+        setUser(null)
+        setToken(null)
+        return
+      }
+
+      try {
+        setUser(JSON.parse(nextUserRaw) as AuthUser)
+        setToken(nextToken)
+      } catch {
+        setUser(null)
+        setToken(null)
+        setRefreshToken(null)
+      }
+    }
+
+    window.addEventListener("storage", onStorage)
+    return () => window.removeEventListener("storage", onStorage)
+  }, [])
+
+  const persist = useCallback((nextUser: AuthUser, nextToken: string, nextRefreshToken: string) => {
     window.localStorage.setItem(TOKEN_STORAGE_KEY, nextToken)
+    window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, nextRefreshToken)
     window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser))
     setUser(nextUser)
     setToken(nextToken)
+    setRefreshToken(nextRefreshToken)
   }, [])
 
   const login = useCallback(
     async (input: LoginInput) => {
       const result = await loginUser(input)
-      persist(result.user, result.token)
+      persist(result.user, result.token, result.refreshToken)
     },
     [persist]
   )
@@ -60,25 +147,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (input: RegisterInput) => {
       const result = await registerUser(input)
-      persist(result.user, result.token)
+      persist(result.user, result.token, result.refreshToken)
     },
     [persist]
   )
 
   const logout = useCallback(() => {
-    window.localStorage.removeItem(TOKEN_STORAGE_KEY)
-    window.localStorage.removeItem(USER_STORAGE_KEY)
+    clearStoredAuth()
     setUser(null)
     setToken(null)
+    setRefreshToken(null)
   }, [])
 
-  return (
-    <AuthContext.Provider
-      value={{ user, token, isLoading, login, register, logout }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextValue>(
+    () => ({ user, token, isLoading, login, register, logout }),
+    [user, token, isLoading, login, register, logout]
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth(): AuthContextValue {

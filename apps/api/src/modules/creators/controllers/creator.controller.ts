@@ -1,21 +1,36 @@
-import type { NextFunction, Request, Response } from "express"
-import { creatorService } from "../services/creator.service.js"
-import { toCreatorResponse } from "../types/creator.types.js"
-import { AppError } from "../../../shared/errors/app-error.js"
+import { Controller, Get, Post, Patch, Param, Body, Req, Res, Next } from '@nestjs/common';
+import type { Request, Response, NextFunction } from 'express';
+import { creatorService } from "../services/creator.service.js";
+import { toCreatorResponse } from "../types/creator.types.js";
+import { createCreatorProfileSchema, updateCreatorProfileSchema } from "../validators/creator.validators.js";
 
-export const creatorController = {
-  async getBySlug(req: Request, res: Response, next: NextFunction): Promise<void> {
+@Controller('creators')
+export class CreatorController {
+  @Post()
+  async create(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const { slug } = req.params
-      const profile = await creatorService.findBySlug(slug!)
+      const userId = (req as any).userId!;
+      const input = createCreatorProfileSchema.parse(body);
+      const profile = await creatorService.createCreatorProfile(userId, input);
+      return res.status(201).json(toCreatorResponse(profile));
+    } catch (error) { next(error); }
+  }
 
-      if (!profile) {
-        throw new AppError(404, "CREATOR_NOT_FOUND", "Creator profile not found")
-      }
+  @Patch(':id')
+  async update(@Param('id') id: string, @Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
+    try {
+      const userId = (req as any).userId!;
+      const input = updateCreatorProfileSchema.parse(body);
+      const profile = await creatorService.updateCreatorProfile(id, input, userId);
+      return res.status(200).json(toCreatorResponse(profile));
+    } catch (error) { next(error); }
+  }
 
-      res.status(200).json(toCreatorResponse(profile))
-    } catch (error) {
-      next(error)
-    }
-  },
+  @Get(':slug')
+  async getBySlug(@Param('slug') slug: string, @Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
+    try {
+      const profile = await creatorService.findBySlug(slug);
+      return res.status(200).json(profile ? toCreatorResponse(profile) : null);
+    } catch (error) { next(error); }
+  }
 }

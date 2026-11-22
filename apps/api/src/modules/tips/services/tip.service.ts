@@ -410,6 +410,22 @@ export const tipService = {
   },
 
   /**
+   * Resolves the stream scope of a tip the fan wants to retry, or null when
+   * the tip doesn't exist / isn't theirs. Lets the controller apply the
+   * per-stream rate limit before retryTip() creates the new tip.
+   */
+  async getRetryScope(
+    tipId: string,
+    fanUserId: string
+  ): Promise<{ streamId: string | null } | null> {
+    const original = await tipRepository.findById(tipId)
+    if (!original || original.fanUserId !== fanUserId) {
+      return null
+    }
+    return { streamId: original.streamId }
+  },
+
+  /**
    * The dead-letter recovery path: a permanently failed tip can be retried
    * safely because this creates a brand-new Tip with a fresh idempotency
    * key (so it's a completely independent payment attempt, never a

@@ -20,7 +20,17 @@ async function registerAndLoginCreator(email: string, slug: string) {
   return { token, userId, creator }
 }
 
-beforeEach(() => {
+const clearRateLimitRecords = async () => {
+  const records = await prisma.rateLimitRecord.findMany({ select: { id: true } })
+  if (records.length > 0) {
+    await prisma.rateLimitRecord.deleteMany({
+      where: { id: { in: records.map((r) => r.id) } },
+    })
+  }
+}
+
+beforeEach(async () => {
+  await clearRateLimitRecords()
   vi.mocked(anchorClient.requestChallenge).mockClear()
   vi.mocked(anchorClient.submitChallenge).mockClear()
   vi.mocked(anchorClient.startInteractiveWithdrawal).mockClear()
@@ -97,6 +107,28 @@ describe("POST /api/creator-payouts", () => {
 
     expect(second.body.id).toBe(first.body.id)
     expect(vi.mocked(anchorClient.startInteractiveWithdrawal)).toHaveBeenCalledTimes(1)
+  })
+
+  it("rate-limits withdrawals beyond the per-user budget", async () => {
+    const { token, userId } = await registerAndLoginCreator("payout-ratelimit@test.com", "payout-ratelimit")
+    await clearRateLimitRecords()
+
+    // Default budget is 5 withdrawals per user per minute; 6 calls must trip it.
+    let limited = false
+    for (let i = 0; i < 6; i++) {
+      const res = await request(app)
+        .post("/api/creator-payouts")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ amount: "20", idempotencyKey: crypto.randomUUID() })
+
+      if (res.status === 429) {
+        limited = true
+        expect(res.body.error.code).toBe("WITHDRAWAL_RATE_LIMITED")
+        break
+      }
+    }
+
+    expect(limited).toBe(true)
   })
 })
 

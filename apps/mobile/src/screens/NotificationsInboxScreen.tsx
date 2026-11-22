@@ -1,5 +1,6 @@
-import React, { useState } from "react"
+import React, { useCallback, useState } from "react"
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native"
+import { StatusBar } from "expo-status-bar"
 
 export interface MobileNotification {
   id: string
@@ -44,18 +45,16 @@ export function NotificationsInboxScreen({
   const [notifications, setNotifications] = useState<MobileNotification[]>(initialNotifications)
   const [filter, setFilter] = useState<"ALL" | "UNREAD">("ALL")
 
-  const handleToggleRead = (id: string) => {
+  const handleToggleRead = useCallback((id: string) => {
     setNotifications((prev) =>
       prev.map((item) => (item.id === id ? { ...item, read: !item.read } : item))
     )
-  }
+  }, [])
 
-  const handleMarkAll = () => {
+  const handleMarkAll = useCallback(() => {
     setNotifications((prev) => prev.map((item) => ({ ...item, read: true })))
-    if (onMarkAllRead) {
-      onMarkAllRead()
-    }
-  }
+    onMarkAllRead?.()
+  }, [onMarkAllRead])
 
   const filteredNotifications = notifications.filter((n) =>
     filter === "UNREAD" ? !n.read : true
@@ -63,8 +62,24 @@ export function NotificationsInboxScreen({
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
+  const renderItem = useCallback(({ item }: { item: MobileNotification }) => (
+    <TouchableOpacity
+      style={[styles.notifItem, item.read ? styles.notifRead : styles.notifUnread]}
+      onPress={() => handleToggleRead(item.id)}
+      testID={`mobile-notif-item-${item.id}`}
+    >
+      <View style={styles.notifHeader}>
+        <Text style={styles.notifTitle}>{item.title}</Text>
+        <View style={[styles.statusDot, item.read ? styles.dotRead : styles.dotUnread]} />
+      </View>
+      <Text style={styles.notifBody}>{item.body}</Text>
+      <Text style={styles.notifTime}>{item.createdAt}</Text>
+    </TouchableOpacity>
+  ), [handleToggleRead])
+
   return (
     <View style={styles.container} testID="notifications-inbox-screen">
+      <StatusBar style="light" />
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>Notifications ({unreadCount} unread)</Text>
         {unreadCount > 0 && (
@@ -109,20 +124,8 @@ export function NotificationsInboxScreen({
         <FlatList
           data={filteredNotifications}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.notifItem, item.read ? styles.notifRead : styles.notifUnread]}
-              onPress={() => handleToggleRead(item.id)}
-              testID={`mobile-notif-item-${item.id}`}
-            >
-              <View style={styles.notifHeader}>
-                <Text style={styles.notifTitle}>{item.title}</Text>
-                <View style={[styles.statusDot, item.read ? styles.dotRead : styles.dotUnread]} />
-              </View>
-              <Text style={styles.notifBody}>{item.body}</Text>
-              <Text style={styles.notifTime}>{formatNotificationTime(item.createdAt)}</Text>
-            </TouchableOpacity>
-          )}
+          renderItem={renderItem}
+          windowSize={7}
         />
       )}
     </View>

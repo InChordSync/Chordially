@@ -1,9 +1,12 @@
 "use client"
 
 import { updateMeSchema, type UpdateMeInput } from "@chordially/shared"
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { ApiError } from "../../lib/api-client"
-import { updateMe } from "../../lib/user-client"
+import { mapZodIssues } from "../../lib/form-utils"
+import { getAvatarUploadUrl, updateMe } from "../../lib/user-client"
+import { TextField } from "../form/text-field"
+import { MediaUploadControl } from "./media-upload-control"
 
 interface EditProfileFormProps {
   token: string
@@ -13,6 +16,7 @@ interface EditProfileFormProps {
     genre: string
     location: string
     genrePrefs: string[]
+    avatarUrl: string | null
   }
   onSuccess: () => void
 }
@@ -29,10 +33,74 @@ export function EditProfileForm({
   const [genrePrefsText, setGenrePrefsText] = useState(
     initialValues.genrePrefs.join(", ")
   )
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    initialValues.avatarUrl
+  )
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
+  async function handleFile(file: File) {
+    setUploadError(null)
+    setUploading(true)
+    setUploadProgress(0)
+    const nextPreviewUrl = URL.createObjectURL(file)
+    setPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return nextPreviewUrl
+    })
+    try {
+      const { uploadUrl, avatarUrl } = await getAvatarUploadUrl(
+        token,
+        file.type
+      )
+      await putFile(uploadUrl, file)
+      setAvatarUrl(avatarUrl)
+    } catch (error) {
+      setUploadError(
+        error instanceof ApiError ? error.message : "Failed to upload image"
+      )
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function handleRemovePhoto() {
+    setAvatarUrl(null)
+    setPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return null
+    })
+  }
+
+  function putFile(url: string, file: File): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open("PUT", url)
+      xhr.setRequestHeader("Content-Type", file.type)
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          setUploadProgress(Math.round((event.loaded / event.total) * 100))
+        }
+      }
+      xhr.onload = () =>
+        xhr.status >= 200 && xhr.status < 300 ? resolve() : reject()
+      xhr.onerror = () => reject()
+      xhr.send(file)
+    })
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -47,6 +115,7 @@ export function EditProfileForm({
     const input: UpdateMeInput = {
       displayName: displayName || undefined,
       bio: bio || null,
+      avatarUrl,
       genre: genre || undefined,
       location: location || undefined,
       genrePrefs: genrePrefs.length > 0 ? genrePrefs : undefined,
@@ -55,14 +124,7 @@ export function EditProfileForm({
     const result = updateMeSchema.safeParse(input)
 
     if (!result.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of result.error.issues) {
-        const field = issue.path[0]
-        if (typeof field === "string" && !errors[field]) {
-          errors[field] = issue.message
-        }
-      }
-      setFieldErrors(errors)
+      setFieldErrors(mapZodIssues(result.error.issues))
       return
     }
 
@@ -84,68 +146,76 @@ export function EditProfileForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate>
+      <TextField
+        id="displayName"
+        name="displayName"
+        label="Display Name"
+        type="text"
+        value={displayName}
+        error={fieldErrors.displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+      />
+
+      <TextField
+        id="bio"
+        name="bio"
+        label="Bio"
+        multiline
+        rows={3}
+        value={bio}
+        error={fieldErrors.bio}
+        onChange={(e) => setBio(e.target.value)}
+      />
+
+      <TextField
+        id="genre"
+        name="genre"
+        label="Genre"
+        type="text"
+        value={genre}
+        error={fieldErrors.genre}
+        onChange={(e) => setGenre(e.target.value)}
+      />
+
+      <TextField
+        id="location"
+        name="location"
+        label="Location"
+        type="text"
+        value={location}
+        error={fieldErrors.location}
+        onChange={(e) => setLocation(e.target.value)}
+      />
+
+      <TextField
+        id="genrePrefs"
+        name="genrePrefs"
+        label="Genre Preferences (comma-separated)"
+        type="text"
+        value={genrePrefsText}
+        error={fieldErrors.genrePrefs}
+        onChange={(e) => setGenrePrefsText(e.target.value)}
+      />
+
       <div>
-        <label htmlFor="displayName">Display Name</label>
-        <input
-          id="displayName"
-          name="displayName"
-          type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-        />
-        {fieldErrors.displayName && (
-          <p role="alert">{fieldErrors.displayName}</p>
+        <label>Profile Photo</label>
+        {(previewUrl || avatarUrl) && (
+          <div>
+            <img
+              src={previewUrl ?? avatarUrl ?? undefined}
+              alt="Profile photo preview"
+              width={96}
+              height={96}
+            />
+            <button type="button" onClick={handleRemovePhoto}>
+              Remove photo
+            </button>
+          </div>
         )}
-      </div>
-
-      <div>
-        <label htmlFor="bio">Bio</label>
-        <textarea
-          id="bio"
-          name="bio"
-          rows={3}
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-        />
-        {fieldErrors.bio && <p role="alert">{fieldErrors.bio}</p>}
-      </div>
-
-      <div>
-        <label htmlFor="genre">Genre</label>
-        <input
-          id="genre"
-          name="genre"
-          type="text"
-          value={genre}
-          onChange={(e) => setGenre(e.target.value)}
-        />
-        {fieldErrors.genre && <p role="alert">{fieldErrors.genre}</p>}
-      </div>
-
-      <div>
-        <label htmlFor="location">Location</label>
-        <input
-          id="location"
-          name="location"
-          type="text"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-        />
-        {fieldErrors.location && <p role="alert">{fieldErrors.location}</p>}
-      </div>
-
-      <div>
-        <label htmlFor="genrePrefs">Genre Preferences (comma-separated)</label>
-        <input
-          id="genrePrefs"
-          name="genrePrefs"
-          type="text"
-          value={genrePrefsText}
-          onChange={(e) => setGenrePrefsText(e.target.value)}
-        />
-        {fieldErrors.genrePrefs && (
-          <p role="alert">{fieldErrors.genrePrefs}</p>
-        )}
+        <MediaUploadControl onFileValid={handleFile} />
+        {uploading && <p role="status">Uploading... {uploadProgress}%</p>}
+        {uploadError && <p role="alert">{uploadError}</p>}
+        {avatarUrl && !uploading && <p role="status">Photo uploaded</p>}
       </div>
 
       {formError && <p role="alert">{formError}</p>}

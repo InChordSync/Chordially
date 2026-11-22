@@ -139,6 +139,9 @@ The API app is the main backend service for Chordially, built as an Express
 - `modules/fans` — fan profile persistence, consumed by `modules/users`.
 - `shared/middleware/auth.middleware.ts` — JWT bearer verification
   (`requireAuth`), used by authenticated routes.
+- `modules/dev` — a local mock API server toggle (`POST/GET /api/dev/mock/*`),
+  mounted **only** when `NODE_ENV=development`, for local UI development
+  without a live backend.
 
 **Future direction** (see Core Product Areas above): user/creator/fan profile
 APIs, payment request coordination with `packages/stellar`, and additional
@@ -149,7 +152,7 @@ modules following the same convention.
 ### `apps/web`
 
 The web app provides the browser-based Chordially experience, built with
-Next.js (App Router).
+Next.js (App Router). See [`apps/web/README.md`](apps/web/README.md) for setup, scripts, env, routes, and auth/CSRF notes.
 
 **Currently implemented:**
 
@@ -167,7 +170,7 @@ account settings, and wallet/payment UI.
 ### `apps/mobile`
 
 The mobile app is a React Native (Expo) + TypeScript foundation for the
-Chordially mobile experience.
+Chordially mobile experience. See [`apps/mobile/README.md`](apps/mobile/README.md) for setup, environment variables, supported platforms, and test conventions.
 
 **Currently implemented:**
 

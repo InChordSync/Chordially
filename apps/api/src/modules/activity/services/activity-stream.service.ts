@@ -20,11 +20,15 @@ export class ActivityStreamService {
     return validated
   }
 
-  public static getActivities(creatorId?: string, limit = 20): ActivityItemInput[] {
+  public static getActivities(
+    creatorId?: string,
+    limit = 20,
+    offset = 0
+  ): ActivityItemInput[] {
     if (creatorId) {
-      return this.items.filter((i) => i.creatorId === creatorId).slice(0, limit)
+      return this.items.filter((i) => i.creatorId === creatorId).slice(offset, offset + limit)
     }
-    return this.items.slice(0, limit)
+    return this.items.slice(offset, offset + limit)
   }
 
   public static clear(): void {

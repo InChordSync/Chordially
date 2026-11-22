@@ -1,3 +1,4 @@
+import Image from "next/image"
 interface CreatorHeaderProps {
   displayName: string
   avatarUrl: string | null
@@ -23,7 +24,7 @@ export function CreatorHeader({
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={avatarUrl}
             alt={`${displayName}'s avatar`}
             width={72}
@@ -31,11 +32,14 @@ export function CreatorHeader({
             style={{ borderRadius: "50%", marginTop: -36 }}
           />
         ) : (
-          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#ccc", marginTop: -36 }} />
+          <div
+            aria-label="Default avatar"
+            style={{ width: 72, height: 72, borderRadius: "50%", background: "#ccc", marginTop: -36 }}
+          />
         )}
         <h1>
           {displayName}
-          {isVerified && <span title="Verified"> ✓</span>}
+          {isVerified && <span aria-label="Verified"> ✓</span>}
         </h1>
       </div>
     </header>

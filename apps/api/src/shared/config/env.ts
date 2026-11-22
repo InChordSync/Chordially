@@ -4,10 +4,25 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
+  // Minimum severity the structured logger will emit. Anything below this is
+  // dropped before it reaches the transport, so raising it is a cheap way to
+  // quieten a noisy environment without touching call sites.
+  LOG_LEVEL: z
+    .enum(["debug", "info", "warn", "error"])
+    .default("info"),
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   JWT_EXPIRES_IN: z.string().default("1h"),
+  JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+  // How long a one-time email verification token stays valid (seconds).
+  EMAIL_VERIFICATION_TTL_SECONDS: z.coerce.number().int().positive().default(24 * 60 * 60),
+  // How long a one-time password reset token stays valid (seconds).
+  PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  // Brute-force protection for login: after this many failed attempts an
+  // account is temporarily locked for the configured duration (seconds).
+  LOGIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  LOGIN_LOCKOUT_DURATION_SECONDS: z.coerce.number().int().positive().default(15 * 60),
   AWS_REGION: z.string().default("us-east-1"),
   AWS_ACCESS_KEY_ID: z.string().default(""),
   AWS_SECRET_ACCESS_KEY: z.string().default(""),
@@ -45,14 +60,25 @@ const envSchema = z.object({
   TIP_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(10_000),
   TIP_RATE_LIMIT_PER_FAN: z.coerce.number().int().positive().default(5),
   TIP_RATE_LIMIT_PER_STREAM: z.coerce.number().int().positive().default(30),
+  // Lenient baseline throttle for the intentionally public creator directory
+  // profile endpoint, to curb unauthenticated scraping/enumeration.
+  CREATOR_PROFILE_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  CREATOR_PROFILE_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(120),
   RECONCILIATION_ENABLED: z.coerce.boolean().default(true),
   RECONCILIATION_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  // Per-admin cap on manual `POST /api/reconciliation/run` triggers.
+  RECONCILIATION_RUN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  RECONCILIATION_RUN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   // How long a tip can sit in "submitted" before reconciliation will look at
   // it at all (gives a normal in-flight submission time to finish).
   RECONCILIATION_STUCK_THRESHOLD_MS: z.coerce.number().int().positive().default(60_000),
   // How long a tip can stay unresolved before reconciliation gives up and
   // dead-letters it as failed.
   RECONCILIATION_DEAD_LETTER_THRESHOLD_MS: z.coerce.number().int().positive().default(300_000),
+  // Optional cache endpoint used by the deployment readiness probe (e.g.
+  // redis://host:6379). When unset, the probe treats the app as having no
+  // external cache dependency and reports the cache subsystem healthy.
+  CACHE_URL: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -30,6 +30,15 @@ export interface WalletDepositResponse {
   createdAt: string
 }
 
+export interface PaginatedDeposits {
+  items: WalletDepositResponse[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+}
+
 export function toWalletDepositResponse(deposit: WalletDeposit): WalletDepositResponse {
   return {
     id: deposit.id,

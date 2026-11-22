@@ -13,4 +13,8 @@ export const userRepository = {
   create(input: CreateUserInput): Promise<User> {
     return prisma.user.create({ data: input })
   },
+
+  update(id: string, data: Partial<Pick<User, "emailVerified" | "failedLoginAttempts" | "lockedUntil" | "passwordHash">>): Promise<User> {
+    return prisma.user.update({ where: { id }, data })
+  },
 }

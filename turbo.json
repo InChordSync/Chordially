@@ -3,7 +3,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"]
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "target/wasm32v1-none/release/*.wasm",
+        "*/target/wasm32v1-none/release/*.wasm"
+      ],
+      "inputs": ["$TURBO_DEFAULT$", "**/*.rs", "Cargo.toml", "Cargo.lock"]
     },
     "lint": {
       "dependsOn": ["^lint"]

@@ -206,7 +206,7 @@ with no need for the client to send anything back over the same
 connection). On connect it:
 
 1. Replays a **backlog**: every tip already associated with the stream, each
-   at its *current* status only (`modules/tips/repositories/tip.repository.ts`'s
+   at its _current_ status only (`modules/tips/repositories/tip.repository.ts`'s
    `findByStreamId`). A tip that has already reached `confirmed` is replayed
    once as `confirmed`, not once per intermediate state it passed through —
    so late joiners can't see duplicate/stale events for the same tip.
@@ -284,7 +284,7 @@ triggered manually via `POST /api/reconciliation/run`):
 3. If every expected destination has a matching successful payment sharing
    the same transaction hash, the tip (and all its payouts, for a split) are
    confirmed with that hash — recovering exactly the "money moved, but we
-   never found out" case. A split tip is only confirmed when *all* payees
+   never found out" case. A split tip is only confirmed when _all_ payees
    match the same hash, since the underlying transaction is atomic; a
    partial match can't happen for a transaction that actually succeeded.
 4. If nothing matches after `RECONCILIATION_DEAD_LETTER_THRESHOLD_MS`, the
@@ -338,3 +338,8 @@ confirmation → reconciliation of a manufactured stuck payment. It's excluded
 from the normal `pnpm test` run (needs network access and real ledger-close
 time) but exercises the real `HorizonStellarClient` end to end rather than
 the mocked one every other test uses.
+
+## Contracts
+
+- [Tip Jar contract design](./tipjar-contract-design.md)
+- [Contract tooling](./contracts-tooling.md)

@@ -18,6 +18,16 @@ export const creatorRepository = {
     return prisma.creatorProfile.findUnique({ where: { userId } })
   },
 
+  search(filters: { q?: string; genre?: string; location?: string }): Promise<CreatorProfile[]> {
+    return prisma.creatorProfile.findMany({
+      where: {
+        ...(filters.genre ? { genre: { contains: filters.genre } } : {}),
+        ...(filters.location ? { location: { contains: filters.location } } : {}),
+      },
+      orderBy: { createdAt: "asc" },
+    })
+  },
+
   create(input: CreateCreatorInput & { slug: string }): Promise<CreatorProfile> {
     return prisma.creatorProfile.create({
       data: {

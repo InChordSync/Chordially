@@ -19,3 +19,5 @@ export class LocalMockApiServerService {
     return this.config;
   }
 }
+
+export const localMockApiServerService = new LocalMockApiServerService();

@@ -1,112 +1,26 @@
-import type { NextFunction, Request, Response } from "express"
-import { AppError } from "../../../shared/errors/app-error.js"
-import { tipEventBus, type TipFeedEvent } from "../../../shared/realtime/tip-event-bus.js"
-import { tipPayoutRepository } from "../../tips/repositories/tip-payout.repository.js"
-import { tipRepository } from "../../tips/repositories/tip.repository.js"
-import { toTipPayoutResponse } from "../../tips/types/tip-payout.types.js"
-import type { Tip, TipStatus } from "../../tips/types/tip.types.js"
-import { streamService } from "../services/stream.service.js"
-import { toStreamResponse } from "../types/stream.types.js"
+import { Controller, Post, Get, Req, Res, Next, Param, Body } from '@nestjs/common';
+import type { Request, Response, NextFunction } from 'express';
+import { streamService } from "../services/stream.service.js";
+import { toStreamResponse } from "../types/stream.types.js";
 
-const HEARTBEAT_INTERVAL_MS = 20_000
-
-type TipFeedPayload = Omit<TipFeedEvent, "seq" | "emittedAt">
-
-async function tipToFeedPayload(tip: Tip): Promise<TipFeedPayload> {
-  const payouts = await tipPayoutRepository.findByTipId(tip.id)
-
-  return {
-    streamId: tip.streamId!,
-    tipId: tip.id,
-    creatorId: tip.creatorId,
-    fanUserId: tip.fanUserId,
-    amount: tip.amount,
-    status: tip.status as TipStatus,
-    txHash: tip.txHash,
-    failureReason: tip.failureReason,
-    ...(payouts.length > 0 ? { payouts: payouts.map(toTipPayoutResponse) } : {}),
+@Controller('streams')
+export class StreamController {
+  @Post()
+  async start(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
+    try {
+      const hostUserId = (req as any).userId!;
+      const { title } = body;
+      const stream = await streamService.startStream(hostUserId, title);
+      return res.status(201).json(toStreamResponse(stream));
+    } catch (error) { next(error); }
   }
-}
 
-export const streamController = {
-  async start(req: Request, res: Response, next: NextFunction): Promise<void> {
+  @Post(':id/end')
+  async end(@Param('id') id: string, @Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const hostUserId = req.userId!
-      const { title } = req.body as { title?: string }
-
-      const stream = await streamService.startStream(hostUserId, title)
-
-      res.status(201).json(toStreamResponse(stream))
-    } catch (error) {
-      next(error)
-    }
-  },
-
-  async end(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const hostUserId = req.userId!
-      const { id } = req.params
-
-      const stream = await streamService.endStream(id!, hostUserId)
-
-      res.status(200).json(toStreamResponse(stream))
-    } catch (error) {
-      next(error)
-    }
-  },
-
-  async streamTips(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { id: streamId } = req.params
-      const stream = await streamService.findById(streamId!)
-
-      if (!stream) {
-        throw new AppError(404, "STREAM_NOT_FOUND", "Stream not found")
-      }
-
-      res.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      })
-      // writeHead() only queues the headers; without an explicit flush they
-      // sit unsent until the first body write, which can be a long time
-      // away (empty backlog + only a periodic heartbeat). Force them out
-      // immediately so clients see the connection open right away.
-      res.flushHeaders()
-
-      // Late joiners get every tip's current state so they aren't blind to
-      // what already happened. Each tip appears once here (its latest
-      // status), so this can never race with / duplicate a live event for
-      // a tip that's still in flight.
-      const backlog = await tipRepository.findByStreamId(streamId!)
-      for (const tip of backlog) {
-        writeEvent(res, await tipToFeedPayload(tip))
-      }
-
-      const unsubscribe = tipEventBus.subscribe(streamId!, (event) => {
-        writeEvent(res, event, event.seq)
-      })
-
-      const heartbeat = setInterval(() => {
-        res.write(": heartbeat\n\n")
-      }, HEARTBEAT_INTERVAL_MS)
-
-      req.on("close", () => {
-        clearInterval(heartbeat)
-        unsubscribe()
-        res.end()
-      })
-    } catch (error) {
-      next(error)
-    }
-  },
-}
-
-function writeEvent(res: Response, payload: TipFeedPayload, seq?: number): void {
-  if (seq !== undefined) {
-    res.write(`id: ${seq}\n`)
+      const hostUserId = (req as any).userId!;
+      const stream = await streamService.endStream(id, hostUserId);
+      return res.status(200).json(toStreamResponse(stream));
+    } catch (error) { next(error); }
   }
-  res.write(`event: tip\n`)
-  res.write(`data: ${JSON.stringify(payload)}\n\n`)
 }

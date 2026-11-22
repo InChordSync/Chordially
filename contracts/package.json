@@ -1,0 +1,11 @@
+{
+  "name": "@chordially/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/run-cargo.mjs build",
+    "test": "node scripts/run-cargo.mjs test",
+    "lint": "node scripts/run-cargo.mjs lint",
+    "doctor": "node scripts/doctor.mjs"
+  }
+}

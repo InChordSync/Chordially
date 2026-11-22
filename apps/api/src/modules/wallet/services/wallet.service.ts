@@ -12,6 +12,7 @@ import type {
   WalletType,
 } from "../types/wallet.types.js"
 import { verifyWalletLinkChallenge } from "../../../shared/wallet-link/challenge.js"
+import { walletAuditLogger } from "./wallet-audit-logger.service.js"
 import { decryptSecret, encryptSecret, requireCustodialSecrets } from "./wallet-crypto.service.js"
 
 /**
@@ -129,6 +130,7 @@ export const walletService = {
    */
   async assertLinkableWallet(publicKey: string, challenge: string, signature: string): Promise<void> {
     if (!verifyWalletLinkChallenge(challenge, publicKey, signature)) {
+      walletAuditLogger.logWalletEvent(challenge, publicKey, "challenge_failed")
       throw new AppError(
         400,
         "INVALID_LINK_PROOF",
@@ -154,7 +156,9 @@ export const walletService = {
   ): Promise<Wallet> {
     await this.assertLinkableWallet(publicKey, challenge, signature)
 
-    return walletRepository.createLinked({ userId, publicKey, network: env.STELLAR_NETWORK })
+    const wallet = await walletRepository.createLinked({ userId, publicKey, network: env.STELLAR_NETWORK })
+    walletAuditLogger.logWalletEvent(userId, publicKey, "challenge_verified")
+    return wallet
   },
 
   async getWalletForUser(userId: string): Promise<WalletMeResponse> {

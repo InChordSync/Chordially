@@ -11,7 +11,13 @@ async function registerAndLogin(email: string) {
   const res = await request(app)
     .post("/api/auth/login")
     .send({ email, password: "Password1!" })
-  return { token: res.body.token as string }
+  return { token: res.body.token as string, userId: res.body.user.id as string }
+}
+
+async function registerAndLoginAdmin(email: string) {
+  const { token, userId } = await registerAndLogin(email)
+  await prisma.user.update({ where: { id: userId }, data: { role: "admin" } })
+  return { token }
 }
 
 beforeEach(async () => {
@@ -25,8 +31,17 @@ describe("GET /api/metrics", () => {
     expect(res.status).toBe(401)
   })
 
-  it("returns the current counters and histogram summaries", async () => {
+  it("rejects non-admin (regular user) requests with 403", async () => {
     const { token } = await registerAndLogin("metrics-fan@test.com")
+
+    const res = await request(app).get("/api/metrics").set("Authorization", `Bearer ${token}`)
+
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe("FORBIDDEN")
+  })
+
+  it("returns the current counters and histogram summaries for an admin", async () => {
+    const { token } = await registerAndLoginAdmin("metrics-admin@test.com")
 
     metrics.incrementCounter("tip_confirmed_total", 2)
     metrics.observeLatency("tip_confirmation_latency_ms", 150)

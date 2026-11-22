@@ -1,0 +1,24 @@
+[package]
+name = "badge-vouchers"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = "22.0.0"
+
+[dev-dependencies]
+soroban-sdk = { version = "22.0.0", features = ["testutils"] }
+
+# Standalone crate until the contracts workspace is introduced.
+[workspace]
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+panic = "abort"
+lto = true
