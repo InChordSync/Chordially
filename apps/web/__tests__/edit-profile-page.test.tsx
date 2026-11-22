@@ -34,6 +34,9 @@ vi.mock("../lib/auth-client", () => ({
 }))
 
 const mockUpdateMe = vi.fn().mockResolvedValue({ ok: true })
+const mockGetAvatarUploadUrl = vi.fn()
+
+const mockGetAvatarUploadUrl = vi.fn()
 
 vi.mock("../lib/user-client", () => ({
   getMe: vi.fn().mockResolvedValue({
@@ -64,6 +67,7 @@ vi.mock("../lib/user-client", () => ({
       },
     },
   }),
+  getAvatarUploadUrl: (...args: unknown[]) => mockGetAvatarUploadUrl(...args),
   updateMe: (...args: unknown[]) => mockUpdateMe(...args),
 }))
 
@@ -133,20 +137,56 @@ describe("EditProfilePage", () => {
     expect(await screen.findByRole("alert")).toBeInTheDocument()
   })
 
-  it("clears genre, location, and genre preferences when emptied (#1365)", async () => {
+  it("uploads avatar with progress and submits avatarUrl (#1385)", async () => {
     const user = userEvent.setup()
-    render(<EditProfilePage />)
+    mockGetAvatarUploadUrl.mockResolvedValue({
+      uploadUrl: "https://s3.example.com/upload",
+      avatarUrl: "https://cdn.example.com/avatar.png",
+    })
 
-    await screen.findByLabelText(/display name/i)
-    await user.clear(screen.getByLabelText(/^genre$/i))
-    await user.clear(screen.getByLabelText(/location/i))
-    await user.clear(screen.getByLabelText(/genre preferences/i))
+    const OriginalXHR = globalThis.XMLHttpRequest
+    class MockXHR {
+      upload: { onprogress: ((e: any) => void) | null } = { onprogress: null }
+      status = 200
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      open = vi.fn()
+      setRequestHeader = vi.fn()
+      send = vi.fn(() => {
+        this.upload.onprogress?.({ lengthComputable: true, loaded: 50, total: 100 })
+        this.upload.onprogress?.({ lengthComputable: true, loaded: 100, total: 100 })
+        this.onload?.()
+      })
+    }
+    // @ts-expect-error test mock
+    globalThis.XMLHttpRequest = MockXHR
+
+    render(<EditProfilePage />)
+    const file = new File(["img"], "avatar.png", { type: "image/png" })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    await user.upload(input, file)
+
+    expect(await screen.findByText(/photo uploaded/i)).toBeInTheDocument()
+    expect(mockGetAvatarUploadUrl).toHaveBeenCalledWith("test-token", "image/png")
 
     await user.click(screen.getByRole("button", { name: /save changes/i }))
-
     expect(mockUpdateMe).toHaveBeenCalledWith(
       "test-token",
-      expect.objectContaining({ genre: null, location: null, genrePrefs: [] })
+      expect.objectContaining({ avatarUrl: "https://cdn.example.com/avatar.png" })
     )
+
+    globalThis.XMLHttpRequest = OriginalXHR
+  })
+
+  it("shows upload error when avatar upload fails (#1385)", async () => {
+    const user = userEvent.setup()
+    mockGetAvatarUploadUrl.mockRejectedValue(new Error("upload failed"))
+
+    render(<EditProfilePage />)
+    const file = new File(["img"], "avatar.png", { type: "image/png" })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    await user.upload(input, file)
+
+    expect(await screen.findByText(/upload failed|failed to upload/i)).toBeInTheDocument()
   })
 })

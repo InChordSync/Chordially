@@ -1,9 +1,11 @@
 "use client"
 
 import { updateMeSchema, type UpdateMeInput } from "@chordially/shared"
-import { useRef, useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { ApiError } from "../../lib/api-client"
+import { mapZodIssues } from "../../lib/form-utils"
 import { getAvatarUploadUrl, updateMe } from "../../lib/user-client"
+import { TextField } from "../form/text-field"
 import { MediaUploadControl } from "./media-upload-control"
 
 interface EditProfileFormProps {
@@ -42,16 +44,23 @@ export function EditProfileForm({
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const uploadXhrRef = useRef<XMLHttpRequest | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-  function cancelUpload() {
-    uploadXhrRef.current?.abort()
-  }
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   async function handleFile(file: File) {
     setUploadError(null)
     setUploading(true)
     setUploadProgress(0)
+    const nextPreviewUrl = URL.createObjectURL(file)
+    setPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return nextPreviewUrl
+    })
     try {
       const { uploadUrl, avatarUrl } = await getAvatarUploadUrl(
         token,
@@ -71,6 +80,14 @@ export function EditProfileForm({
       uploadXhrRef.current = null
       setUploading(false)
     }
+  }
+
+  function handleRemovePhoto() {
+    setAvatarUrl(null)
+    setPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return null
+    })
   }
 
   function putFile(url: string, file: File): Promise<void> {
@@ -122,14 +139,7 @@ export function EditProfileForm({
     const result = updateMeSchema.safeParse(input)
 
     if (!result.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of result.error.issues) {
-        const field = issue.path[0]
-        if (typeof field === "string" && !errors[field]) {
-          errors[field] = issue.message
-        }
-      }
-      setFieldErrors(errors)
+      setFieldErrors(mapZodIssues(result.error.issues))
       return
     }
 
@@ -151,79 +161,74 @@ export function EditProfileForm({
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <div>
-        <label htmlFor="displayName">Display Name</label>
-        <input
-          id="displayName"
-          name="displayName"
-          type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-        />
-        {fieldErrors.displayName && (
-          <p role="alert">{fieldErrors.displayName}</p>
-        )}
-      </div>
+      <TextField
+        id="displayName"
+        name="displayName"
+        label="Display Name"
+        type="text"
+        value={displayName}
+        error={fieldErrors.displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+      />
+
+      <TextField
+        id="bio"
+        name="bio"
+        label="Bio"
+        multiline
+        rows={3}
+        value={bio}
+        error={fieldErrors.bio}
+        onChange={(e) => setBio(e.target.value)}
+      />
+
+      <TextField
+        id="genre"
+        name="genre"
+        label="Genre"
+        type="text"
+        value={genre}
+        error={fieldErrors.genre}
+        onChange={(e) => setGenre(e.target.value)}
+      />
+
+      <TextField
+        id="location"
+        name="location"
+        label="Location"
+        type="text"
+        value={location}
+        error={fieldErrors.location}
+        onChange={(e) => setLocation(e.target.value)}
+      />
+
+      <TextField
+        id="genrePrefs"
+        name="genrePrefs"
+        label="Genre Preferences (comma-separated)"
+        type="text"
+        value={genrePrefsText}
+        error={fieldErrors.genrePrefs}
+        onChange={(e) => setGenrePrefsText(e.target.value)}
+      />
 
       <div>
-        <label htmlFor="bio">Bio</label>
-        <textarea
-          id="bio"
-          name="bio"
-          rows={3}
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-        />
-        {fieldErrors.bio && <p role="alert">{fieldErrors.bio}</p>}
-      </div>
-
-      <div>
-        <label htmlFor="genre">Genre</label>
-        <input
-          id="genre"
-          name="genre"
-          type="text"
-          value={genre}
-          onChange={(e) => setGenre(e.target.value)}
-        />
-        {fieldErrors.genre && <p role="alert">{fieldErrors.genre}</p>}
-      </div>
-
-      <div>
-        <label htmlFor="location">Location</label>
-        <input
-          id="location"
-          name="location"
-          type="text"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-        />
-        {fieldErrors.location && <p role="alert">{fieldErrors.location}</p>}
-      </div>
-
-      <div>
-        <label htmlFor="genrePrefs">Genre Preferences (comma-separated)</label>
-        <input
-          id="genrePrefs"
-          name="genrePrefs"
-          type="text"
-          value={genrePrefsText}
-          onChange={(e) => setGenrePrefsText(e.target.value)}
-        />
-        {fieldErrors.genrePrefs && (
-          <p role="alert">{fieldErrors.genrePrefs}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="avatar-upload">Profile Photo</label>
-        <MediaUploadControl id="avatar-upload" onFileValid={handleFile} />
-        {uploading && (
+        <label>Profile Photo</label>
+        {(previewUrl || avatarUrl) && (
           <div>
-            <p role="status">Uploading... {uploadProgress}%</p>
-            <button type="button" onClick={cancelUpload}>Cancel upload</button>
+            <img
+              src={previewUrl ?? avatarUrl ?? undefined}
+              alt="Profile photo preview"
+              width={96}
+              height={96}
+            />
+            <button type="button" onClick={handleRemovePhoto}>
+              Remove photo
+            </button>
           </div>
         )}
+        <MediaUploadControl onFileValid={handleFile} />
+        {uploading && <p role="status">Uploading... {uploadProgress}%</p>}
         {uploadError && <p role="alert">{uploadError}</p>}
         {avatarUrl && !uploading && <p role="status">Photo uploaded</p>}
       </div>

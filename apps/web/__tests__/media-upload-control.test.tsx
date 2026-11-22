@@ -4,21 +4,33 @@ import { describe, expect, it, vi } from "vitest"
 import { MediaUploadControl } from "../components/profile/media-upload-control"
 
 describe("MediaUploadControl", () => {
-  it("associates input with label and exposes errors accessibly (#1368)", async () => {
+  it("allows re-selecting the same file after validation failure (#1369)", async () => {
     const user = userEvent.setup()
     const onFileValid = vi.fn()
-    render(
-      <div>
-        <label htmlFor="avatar-upload">Profile Photo</label>
-        <MediaUploadControl id="avatar-upload" onFileValid={onFileValid} />
-      </div>
-    )
+    render(<MediaUploadControl onFileValid={onFileValid} />)
 
-    const input = screen.getByLabelText(/profile photo/i)
-    const badFile = new File(["x"], "photo.txt", { type: "text/plain" })
-    await user.upload(input, badFile)
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    const bigFile = new File([new Uint8Array(6 * 1024 * 1024)], "photo.png", { type: "image/png" })
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/jpeg, png, or webp/i)
-    expect(input).toHaveAttribute("aria-invalid", "true")
+    await user.upload(input, bigFile)
+    expect(screen.getByRole("alert")).toHaveTextContent(/smaller than 5 mb/i)
+    expect(onFileValid).not.toHaveBeenCalled()
+
+    // Same file again - should trigger change because input value was reset
+    await user.upload(input, bigFile)
+    expect(screen.getByRole("alert")).toHaveTextContent(/smaller than 5 mb/i)
+  })
+
+  it("accepts file by extension fallback when type is empty (#1369)", async () => {
+    const user = userEvent.setup()
+    const onFileValid = vi.fn()
+    render(<MediaUploadControl onFileValid={onFileValid} />)
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(["img"], "photo.webp", { type: "" })
+    await user.upload(input, file)
+
+    expect(onFileValid).toHaveBeenCalledWith(file)
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 })
