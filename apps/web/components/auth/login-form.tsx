@@ -9,6 +9,7 @@ export function LoginForm() {
   const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -48,6 +49,9 @@ export function LoginForm() {
     }
   }
 
+  const emailErrorId = "login-email-error"
+  const passwordErrorId = "login-password-error"
+
   return (
     <form onSubmit={handleSubmit} noValidate>
       <div>
@@ -58,22 +62,43 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           value={email}
+          aria-invalid={fieldErrors.email ? true : undefined}
+          aria-describedby={fieldErrors.email ? emailErrorId : undefined}
           onChange={(event) => setEmail(event.target.value)}
         />
-        {fieldErrors.email && <p role="alert">{fieldErrors.email}</p>}
+        {fieldErrors.email && (
+          <p id={emailErrorId} role="alert">
+            {fieldErrors.email}
+          </p>
+        )}
       </div>
 
       <div>
         <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        {fieldErrors.password && <p role="alert">{fieldErrors.password}</p>}
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            value={password}
+            aria-invalid={fieldErrors.password ? true : undefined}
+            aria-describedby={fieldErrors.password ? passwordErrorId : undefined}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          <button
+            type="button"
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((v) => !v)}
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
+        {fieldErrors.password && (
+          <p id={passwordErrorId} role="alert">
+            {fieldErrors.password}
+          </p>
+        )}
       </div>
 
       <div style={{ marginTop: "0.5rem", marginBottom: "0.5rem" }}>
