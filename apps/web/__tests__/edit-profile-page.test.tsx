@@ -1,11 +1,18 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import EditProfilePage from "../app/profile/edit/page"
+
+const mockReplace = vi.fn()
+let mockAuth = { token: "test-token" as string | null, user: null, isLoading: false }
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace }),
+}))
 
 vi.mock("../lib/auth-context", () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
-  useAuth: () => ({ token: "test-token", user: null, isLoading: false }),
+  useAuth: () => mockAuth,
 }))
 
 vi.mock("../lib/api-client", () => ({
@@ -65,6 +72,25 @@ vi.mock("../lib/user-client", () => ({
 }))
 
 describe("EditProfilePage", () => {
+  beforeEach(() => {
+    mockAuth = { token: "test-token", user: null, isLoading: false }
+    mockReplace.mockReset()
+    mockUpdateMe.mockClear()
+  })
+
+  it("renders loading state while auth is loading (#1366)", () => {
+    mockAuth = { token: null, user: null, isLoading: true }
+    render(<EditProfilePage />)
+    expect(screen.getByText(/loading/i)).toBeInTheDocument()
+  })
+
+  it("redirects unauthenticated users to login (#1366)", async () => {
+    mockAuth = { token: null, user: null, isLoading: false }
+    render(<EditProfilePage />)
+    await screen.findByText(/loading/i)
+    expect(mockReplace).toHaveBeenCalledWith("/login?next=%2Fprofile%2Fedit")
+  })
+
   it("renders the edit form with pre-filled values", async () => {
     render(<EditProfilePage />)
 

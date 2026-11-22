@@ -69,10 +69,15 @@ export function EditProfileForm({
       await putFile(uploadUrl, file)
       setAvatarUrl(avatarUrl)
     } catch (error) {
-      setUploadError(
-        error instanceof ApiError ? error.message : "Failed to upload image"
-      )
+      if (error instanceof Error && error.name === "AbortError") {
+        setUploadError("Upload cancelled")
+      } else {
+        setUploadError(
+          error instanceof Error ? error.message : "Failed to upload image"
+        )
+      }
     } finally {
+      uploadXhrRef.current = null
       setUploading(false)
     }
   }
@@ -88,16 +93,26 @@ export function EditProfileForm({
   function putFile(url: string, file: File): Promise<void> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest()
+      uploadXhrRef.current = xhr
       xhr.open("PUT", url)
       xhr.setRequestHeader("Content-Type", file.type)
+      xhr.timeout = 30000
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
           setUploadProgress(Math.round((event.loaded / event.total) * 100))
         }
       }
-      xhr.onload = () =>
-        xhr.status >= 200 && xhr.status < 300 ? resolve() : reject()
-      xhr.onerror = () => reject()
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve()
+        else reject(new Error(`Upload failed with status ${xhr.status}`))
+      }
+      xhr.onerror = () => reject(new Error("Upload failed due to a network error"))
+      xhr.onabort = () => {
+        const err = new Error("Upload cancelled")
+        err.name = "AbortError"
+        reject(err)
+      }
+      xhr.ontimeout = () => reject(new Error("Upload timed out"))
       xhr.send(file)
     })
   }
@@ -116,9 +131,9 @@ export function EditProfileForm({
       displayName: displayName || undefined,
       bio: bio || null,
       avatarUrl,
-      genre: genre || undefined,
-      location: location || undefined,
-      genrePrefs: genrePrefs.length > 0 ? genrePrefs : undefined,
+      genre: genre.trim() ? genre : null,
+      location: location.trim() ? location : null,
+      genrePrefs,
     }
 
     const result = updateMeSchema.safeParse(input)
