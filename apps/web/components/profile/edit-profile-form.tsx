@@ -158,10 +158,12 @@ export function EditProfileForm({
           name="displayName"
           type="text"
           value={displayName}
+          aria-invalid={fieldErrors.displayName ? true : undefined}
+          aria-describedby={fieldErrors.displayName ? "displayName-error" : undefined}
           onChange={(e) => setDisplayName(e.target.value)}
         />
         {fieldErrors.displayName && (
-          <p role="alert">{fieldErrors.displayName}</p>
+          <p id="displayName-error" role="alert">{fieldErrors.displayName}</p>
         )}
       </div>
 
@@ -172,9 +174,11 @@ export function EditProfileForm({
           name="bio"
           rows={3}
           value={bio}
+          aria-invalid={fieldErrors.bio ? true : undefined}
+          aria-describedby={fieldErrors.bio ? "bio-error" : undefined}
           onChange={(e) => setBio(e.target.value)}
         />
-        {fieldErrors.bio && <p role="alert">{fieldErrors.bio}</p>}
+        {fieldErrors.bio && <p id="bio-error" role="alert">{fieldErrors.bio}</p>}
       </div>
 
       <div>
@@ -184,9 +188,11 @@ export function EditProfileForm({
           name="genre"
           type="text"
           value={genre}
+          aria-invalid={fieldErrors.genre ? true : undefined}
+          aria-describedby={fieldErrors.genre ? "genre-error" : undefined}
           onChange={(e) => setGenre(e.target.value)}
         />
-        {fieldErrors.genre && <p role="alert">{fieldErrors.genre}</p>}
+        {fieldErrors.genre && <p id="genre-error" role="alert">{fieldErrors.genre}</p>}
       </div>
 
       <div>
@@ -196,9 +202,11 @@ export function EditProfileForm({
           name="location"
           type="text"
           value={location}
+          aria-invalid={fieldErrors.location ? true : undefined}
+          aria-describedby={fieldErrors.location ? "location-error" : undefined}
           onChange={(e) => setLocation(e.target.value)}
         />
-        {fieldErrors.location && <p role="alert">{fieldErrors.location}</p>}
+        {fieldErrors.location && <p id="location-error" role="alert">{fieldErrors.location}</p>}
       </div>
 
       <div>
@@ -208,10 +216,12 @@ export function EditProfileForm({
           name="genrePrefs"
           type="text"
           value={genrePrefsText}
+          aria-invalid={fieldErrors.genrePrefs ? true : undefined}
+          aria-describedby={fieldErrors.genrePrefs ? "genrePrefs-error" : undefined}
           onChange={(e) => setGenrePrefsText(e.target.value)}
         />
         {fieldErrors.genrePrefs && (
-          <p role="alert">{fieldErrors.genrePrefs}</p>
+          <p id="genrePrefs-error" role="alert">{fieldErrors.genrePrefs}</p>
         )}
       </div>
 
