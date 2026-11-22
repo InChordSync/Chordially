@@ -1,28 +1,46 @@
-import React, { useState } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native"
+import React, { useEffect, useState } from "react"
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from "react-native"
 
 export interface CompactCreatorCardProps {
   id: string
   displayName: string
   slug: string
+  avatarUrl?: string | null
   followerCount: number
   isFollowing?: boolean
-  onFollowToggle?: (creatorId: string, currentFollowing: boolean) => Promise<boolean>
+  onFollowToggle?: (
+    creatorId: string,
+    currentFollowing: boolean
+  ) => Promise<boolean | number | { followerCount?: number; following?: boolean }>
 }
 
-export function CompactCreatorCard({
+export const CompactCreatorCard = memo(function CompactCreatorCard({
   id,
   displayName,
   slug,
+  avatarUrl,
   followerCount: initialFollowerCount,
   isFollowing: initialIsFollowing = false,
   onFollowToggle,
 }: CompactCreatorCardProps) {
   const [following, setFollowing] = useState(initialIsFollowing)
-  const [followerCount, setFollowerCount] = useState(initialFollowerCount)
+  const [followerCount, setFollowerCount] = useState(Math.max(0, initialFollowerCount))
   const [isLoading, setIsLoading] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
 
-  const handlePressFollow = async () => {
+  useEffect(() => {
+    setFollowing(initialIsFollowing)
+  }, [initialIsFollowing])
+
+  useEffect(() => {
+    setFollowerCount(Math.max(0, initialFollowerCount))
+  }, [initialFollowerCount])
+
+  useEffect(() => {
+    setAvatarError(false)
+  }, [avatarUrl])
+
+  const handlePressFollow = useCallback(async () => {
     if (isLoading) return
 
     const prevFollowing = following
@@ -30,14 +48,24 @@ export function CompactCreatorCard({
 
     const nextFollowing = !prevFollowing
     setFollowing(nextFollowing)
-    setFollowerCount(nextFollowing ? prevCount + 1 : prevCount - 1)
+    setFollowerCount(Math.max(0, nextFollowing ? prevCount + 1 : prevCount - 1))
     setIsLoading(true)
 
     try {
       if (onFollowToggle) {
-        const success = await onFollowToggle(id, prevFollowing)
-        if (!success) {
+        const result = await onFollowToggle(id, prevFollowing)
+        if (result === false) {
           throw new Error("Failed to toggle follow")
+        }
+        if (typeof result === "number") {
+          setFollowerCount(Math.max(0, result))
+        } else if (result && typeof result === "object") {
+          if (typeof result.followerCount === "number") {
+            setFollowerCount(Math.max(0, result.followerCount))
+          }
+          if (typeof result.following === "boolean") {
+            setFollowing(result.following)
+          }
         }
       }
     } catch {
@@ -46,13 +74,26 @@ export function CompactCreatorCard({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [followerCount, following, id, isLoading, onFollowToggle])
+
+  useEffect(() => {
+    setAvatarError(false)
+  }, [avatarUrl])
 
   return (
     <View style={styles.cardContainer} testID={`compact-creator-card-${id}`}>
-      <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
-      </View>
+      {avatarUrl && !avatarError ? (
+        <Image
+          source={{ uri: avatarUrl }}
+          style={styles.avatarImage}
+          onError={() => setAvatarError(true)}
+          accessibilityLabel={`${displayName} avatar`}
+        />
+      ) : (
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
+        </View>
+      )}
       <View style={styles.infoContainer}>
         <Text style={styles.displayName} numberOfLines={1}>
           {displayName}
@@ -66,6 +107,9 @@ export function CompactCreatorCard({
         style={[styles.followButton, following ? styles.followingButton : styles.notFollowingButton]}
         onPress={handlePressFollow}
         disabled={isLoading}
+        accessibilityRole="button"
+        accessibilityLabel={`${following ? "Unfollow" : "Follow"} ${displayName}`}
+        accessibilityState={{ disabled: isLoading, busy: isLoading, selected: following }}
         testID={`follow-toggle-btn-${id}`}
       >
         {isLoading ? (
@@ -78,7 +122,7 @@ export function CompactCreatorCard({
       </TouchableOpacity>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   cardContainer: {
@@ -97,6 +141,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    backgroundColor: "#334155",
   },
   avatarText: {
     color: "#ffffff",
