@@ -4,6 +4,8 @@ import { registerSchema } from "@chordially/shared"
 import { useState, type FormEvent } from "react"
 import { AuthApiError } from "../../lib/auth-client"
 import { useAuth } from "../../lib/auth-context"
+import { mapZodIssues } from "../../lib/form-utils"
+import { TextField } from "../form/text-field"
 
 export function RegisterForm() {
   const { register } = useAuth()
@@ -20,16 +22,8 @@ export function RegisterForm() {
     setSuccess(false)
 
     const result = registerSchema.safeParse({ email, password })
-
     if (!result.success) {
-      const errors: Record<string, string> = {}
-      for (const issue of result.error.issues) {
-        const field = issue.path[0]
-        if (typeof field === "string" && !errors[field]) {
-          errors[field] = issue.message
-        }
-      }
-      setFieldErrors(errors)
+      setFieldErrors(mapZodIssues(result.error.issues))
       return
     }
 
@@ -50,31 +44,27 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <div>
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        {fieldErrors.email && <p role="alert">{fieldErrors.email}</p>}
-      </div>
+      <TextField
+        id="email"
+        name="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        value={email}
+        error={fieldErrors.email}
+        onChange={(event) => setEmail(event.target.value)}
+      />
 
-      <div>
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        {fieldErrors.password && <p role="alert">{fieldErrors.password}</p>}
-      </div>
+      <TextField
+        id="password"
+        name="password"
+        label="Password"
+        type="password"
+        autoComplete="new-password"
+        value={password}
+        error={fieldErrors.password}
+        onChange={(event) => setPassword(event.target.value)}
+      />
 
       {formError && <p role="alert">{formError}</p>}
       {success && <p role="status">Account created. You&apos;re logged in.</p>}
