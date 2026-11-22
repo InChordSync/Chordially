@@ -14,7 +14,7 @@ export interface CompactCreatorCardProps {
   ) => Promise<boolean | number | { followerCount?: number; following?: boolean }>
 }
 
-export function CompactCreatorCard({
+export const CompactCreatorCard = memo(function CompactCreatorCard({
   id,
   displayName,
   slug,
@@ -40,7 +40,7 @@ export function CompactCreatorCard({
     setAvatarError(false)
   }, [avatarUrl])
 
-  const handlePressFollow = async () => {
+  const handlePressFollow = useCallback(async () => {
     if (isLoading) return
 
     const prevFollowing = following
@@ -74,7 +74,7 @@ export function CompactCreatorCard({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [followerCount, following, id, isLoading, onFollowToggle])
 
   return (
     <View style={styles.cardContainer} testID={`compact-creator-card-${id}`}>
@@ -118,7 +118,7 @@ export function CompactCreatorCard({
       </TouchableOpacity>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   cardContainer: {
