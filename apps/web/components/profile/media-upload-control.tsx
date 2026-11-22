@@ -6,12 +6,14 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const MAX_SIZE_BYTES = 5 * 1024 * 1024
 
 interface MediaUploadControlProps {
+  id?: string
   onFileValid: (file: File) => void
 }
 
 /** Validates a media file's type/size client-side before it is uploaded. */
-export function MediaUploadControl({ onFileValid }: MediaUploadControlProps) {
+export function MediaUploadControl({ id = "media-upload", onFileValid }: MediaUploadControlProps) {
   const [error, setError] = useState<string | null>(null)
+  const errorId = `${id}-error`
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -33,8 +35,15 @@ export function MediaUploadControl({ onFileValid }: MediaUploadControlProps) {
 
   return (
     <div>
-      <input type="file" accept={ALLOWED_TYPES.join(",")} onChange={handleChange} />
-      {error && <p role="alert">{error}</p>}
+      <input
+        id={id}
+        type="file"
+        accept={ALLOWED_TYPES.join(",")}
+        onChange={handleChange}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+      />
+      {error && <p id={errorId} role="alert">{error}</p>}
     </div>
   )
 }

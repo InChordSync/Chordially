@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import type { MeResponse } from "@chordially/shared"
+import { useRouter } from "next/navigation"
 import { useAuth } from "../../../lib/auth-context"
 import { getMe } from "../../../lib/user-client"
 import { EditProfileForm } from "../../../components/profile/edit-profile-form"
@@ -12,7 +13,8 @@ type LoadState =
   | { status: "ok"; data: MeResponse }
 
 export default function EditProfilePage() {
-  const { token } = useAuth()
+  const router = useRouter()
+  const { token, isLoading } = useAuth()
   const [state, setState] = useState<LoadState>({ status: "loading" })
 
   const load = useCallback(async () => {
@@ -29,8 +31,14 @@ export default function EditProfilePage() {
     load()
   }, [load])
 
-  if (!token) {
-    return <p>Please log in to edit your profile.</p>
+  useEffect(() => {
+    if (!isLoading && !token) {
+      router.replace("/login?next=%2Fprofile%2Fedit")
+    }
+  }, [isLoading, token, router])
+
+  if (isLoading || !token) {
+    return <p>Loading…</p>
   }
 
   if (state.status === "loading") {

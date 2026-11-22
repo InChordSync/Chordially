@@ -81,4 +81,13 @@ describe("updateMeSchema", () => {
     })
     expect(result.success).toBe(true)
   })
+
+  it("accepts null genre and location to clear fields (#1365)", () => {
+    expect(updateMeSchema.safeParse({ genre: null }).success).toBe(true)
+    expect(updateMeSchema.safeParse({ location: null }).success).toBe(true)
+  })
+
+  it("accepts empty genrePrefs array to clear preferences (#1365)", () => {
+    expect(updateMeSchema.safeParse({ genrePrefs: [] }).success).toBe(true)
+  })
 })
