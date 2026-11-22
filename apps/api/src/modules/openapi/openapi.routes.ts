@@ -12,7 +12,7 @@ openapiRouter.get("/", (_req: Request, res) => {
   res.status(200).json({
     api: "Chordially API",
     openapi: `${openapiSpec.openapi}`,
-    spec: "/api/docs/openapi.json",
+    spec: "/api/openapi.json",
     paths,
   })
 })

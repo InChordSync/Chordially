@@ -7,12 +7,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: API tests
+        run: pnpm --filter @chordially/api test
+      - name: OpenAPI spec is current
+        run: pnpm --filter @chordially/api openapi:check
       - name: Mobile coverage
         run: pnpm --filter @chordially/mobile test -- --coverage --watchAll=false

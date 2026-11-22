@@ -8,7 +8,7 @@ export interface DependencyCheckResult {
   message?: string
 }
 
-const PROBE_TIMEOUT_MS = 1500
+const probeTimeout = () => env.HEALTH_PROBE_TIMEOUT_MS
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -32,7 +32,7 @@ export class DependencyHealthService {
   public async checkDatabase(): Promise<DependencyCheckResult> {
     const started = Date.now()
     try {
-      await withTimeout(prisma.$queryRaw`SELECT 1`, PROBE_TIMEOUT_MS)
+      await withTimeout(prisma.$queryRaw`SELECT 1`, probeTimeout())
       return { ok: true, latencyMs: Date.now() - started }
     } catch (error) {
       return {
@@ -65,7 +65,7 @@ export class DependencyHealthService {
             socket.destroy()
             reject(err ?? new Error("cache ping failed"))
           }
-          socket.setTimeout(PROBE_TIMEOUT_MS)
+          socket.setTimeout(probeTimeout())
           socket.on("connect", () => {
             socket.write("*1\r\n$4\r\nPING\r\n")
           })
@@ -80,7 +80,7 @@ export class DependencyHealthService {
             }
           })
         }),
-        PROBE_TIMEOUT_MS
+        probeTimeout()
       )
 
       return ok
@@ -92,6 +92,23 @@ export class DependencyHealthService {
         latencyMs: Date.now() - started,
         message: error instanceof Error ? error.message : "cache unreachable",
       }
+    }
+  }
+
+  // Heap pressure check with a configurable ceiling. The old probe hard-coded
+  // 150MB, which is too small for production and not tunable per deployment.
+  public checkMemory(): DependencyCheckResult & { usedMb: number; limitMb: number } {
+    const started = Date.now()
+    const usedMb = Math.round(process.memoryUsage().heapUsed / (1024 * 1024))
+    const limitMb = env.HEALTH_HEAP_LIMIT_MB
+    const ok = usedMb <= limitMb
+
+    return {
+      ok,
+      latencyMs: Date.now() - started,
+      usedMb,
+      limitMb,
+      message: ok ? undefined : `heap ${usedMb}MB exceeds ${limitMb}MB limit`,
     }
   }
 }
