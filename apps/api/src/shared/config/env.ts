@@ -11,6 +11,8 @@ const envSchema = z.object({
     .enum(["debug", "info", "warn", "error"])
     .default("info"),
   PORT: z.coerce.number().int().positive().default(4000),
+  CORS_ALLOWED_ORIGINS: z.string().default(""),
+  SHUTDOWN_DRAIN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   JWT_EXPIRES_IN: z.string().default("1h"),
