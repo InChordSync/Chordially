@@ -152,7 +152,7 @@ modules following the same convention.
 ### `apps/web`
 
 The web app provides the browser-based Chordially experience, built with
-Next.js (App Router).
+Next.js (App Router). See [`apps/web/README.md`](apps/web/README.md) for setup, scripts, env, routes, and auth/CSRF notes.
 
 **Currently implemented:**
 
