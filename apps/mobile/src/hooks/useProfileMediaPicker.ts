@@ -1,5 +1,6 @@
 import { useState } from "react"
 import * as ImagePicker from "expo-image-picker"
+import { validatePickedImage } from "../lib/image-validation"
 
 export type ProfileMediaSlot = "avatar" | "banner"
 
@@ -35,6 +36,12 @@ export function useProfileMediaPicker() {
     if (result.canceled || result.assets.length === 0) return null
 
     const asset = result.assets[0]!
+    const validationError = validatePickedImage(asset)
+    if (validationError) {
+      setError(validationError)
+      return null
+    }
+
     return { slot, uri: asset.uri, mimeType: asset.mimeType ?? "image/jpeg" }
   }
 
