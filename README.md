@@ -170,7 +170,7 @@ account settings, and wallet/payment UI.
 ### `apps/mobile`
 
 The mobile app is a React Native (Expo) + TypeScript foundation for the
-Chordially mobile experience.
+Chordially mobile experience. See [`apps/mobile/README.md`](apps/mobile/README.md) for setup, environment variables, supported platforms, and test conventions.
 
 **Currently implemented:**
 
