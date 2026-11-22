@@ -1,1 +1,3 @@
 export const globalConfig = {};\n
+
+random codes...
