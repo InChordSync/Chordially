@@ -1,20 +1,22 @@
-import { useEffect } from "react"
-let globalSavedCreatorsCache: SavedCreatorItem[] | null = null;
-import React, { useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native"
+import { StatusBar } from "expo-status-bar"
 import { CompactCreatorCard } from "../components/CompactCreatorCard"
+
+let globalSavedCreatorsCache: SavedCreatorItem[] | null = null;
 
 export interface SavedCreatorItem {
   id: string
   displayName: string
   slug: string
+  avatarUrl?: string | null
   followerCount: number
   isFollowing?: boolean
 }
 
 export interface SavedCreatorsScreenProps {
   initialSavedCreators?: SavedCreatorItem[]
-  onRemoveBookmark?: (creatorId: string) => void
+  onRemoveBookmark?: (creatorId: string) => void | Promise<void>
   onFollowToggle?: (creatorId: string, currentStatus: boolean) => Promise<boolean>
 }
 
@@ -23,26 +25,43 @@ export function SavedCreatorsScreen({
   onRemoveBookmark,
   onFollowToggle,
 }: SavedCreatorsScreenProps) {
-  const [savedCreators, setSavedCreators] = useState<SavedCreatorItem[]>(() => {
-    if (globalSavedCreatorsCache !== null) {
-      return globalSavedCreatorsCache;
-    }
-    return initialSavedCreators;
-  });
+  const [savedCreators, setSavedCreators] = useState<SavedCreatorItem[]>(initialSavedCreators)
+  const [recentlyRemoved, setRecentlyRemoved] = useState<SavedCreatorItem | null>(null)
 
   useEffect(() => {
-    globalSavedCreatorsCache = savedCreators;
-  }, [savedCreators]);
+    setSavedCreators(initialSavedCreators)
+  }, [initialSavedCreators])
 
-  const handleRemove = (creatorId: string) => {
-    setSavedCreators((prev) => prev.filter((item) => item.id !== creatorId))
-    if (onRemoveBookmark) {
-      onRemoveBookmark(creatorId)
+  const handleRemove = useCallback((creatorId: string) => {
+    const item = savedCreators.find((c) => c.id === creatorId)
+    if (!item) return
+
+    setSavedCreators((prev) => prev.filter((c) => c.id !== creatorId))
+    setRecentlyRemoved(item)
+
+    try {
+      const result = onRemoveBookmark?.(creatorId)
+      if (result && typeof (result as Promise<void>).then === "function") {
+        void (result as Promise<void>).catch(() => {
+          setSavedCreators((prev) => [item, ...prev.filter((c) => c.id !== item.id)])
+          setRecentlyRemoved(null)
+        })
+      }
+    } catch {
+      setSavedCreators((prev) => [item, ...prev.filter((c) => c.id !== item.id)])
+      setRecentlyRemoved(null)
     }
-  }
+  }, [onRemoveBookmark, savedCreators])
+
+  const handleUndo = useCallback(() => {
+    if (!recentlyRemoved) return
+    setSavedCreators((prev) => [recentlyRemoved, ...prev.filter((c) => c.id !== recentlyRemoved.id)])
+    setRecentlyRemoved(null)
+  }, [recentlyRemoved])
 
   return (
     <View style={styles.container} testID="saved-creators-screen">
+      <StatusBar style="light" />
       <Text style={styles.headerTitle}>Saved Creators</Text>
 
       {savedCreators.length === 0 ? (
@@ -61,6 +80,7 @@ export function SavedCreatorsScreen({
                   id={item.id}
                   displayName={item.displayName}
                   slug={item.slug}
+                  avatarUrl={item.avatarUrl}
                   followerCount={item.followerCount}
                   isFollowing={item.isFollowing}
                   onFollowToggle={onFollowToggle}
@@ -68,7 +88,8 @@ export function SavedCreatorsScreen({
               </View>
               <TouchableOpacity
                 style={styles.removeBtn}
-                onPress={() => handleRemove(item.id)}
+                onPress={() => void handleRemove(item.id)}
+                accessibilityLabel={`Remove ${item.displayName} from saved`}
                 testID={`remove-saved-btn-${item.id}`}
               >
                 <Text style={styles.removeBtnText}>Remove</Text>
@@ -76,6 +97,15 @@ export function SavedCreatorsScreen({
             </View>
           )}
         />
+      )}
+
+      {recentlyRemoved && (
+        <View style={styles.snackbar} testID="saved-remove-snackbar">
+          <Text style={styles.snackbarText}>Removed {recentlyRemoved.displayName}</Text>
+          <TouchableOpacity onPress={handleUndo} testID="undo-remove-saved">
+            <Text style={styles.snackbarUndo}>Undo</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   )
@@ -127,4 +157,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+  snackbar: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 16,
+    backgroundColor: "#334155",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  snackbarText: { color: "#ffffff", fontSize: 13 },
+  snackbarUndo: { color: "#93c5fd", fontWeight: "700", fontSize: 13 },
 })

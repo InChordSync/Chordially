@@ -1,4 +1,5 @@
 import Image from "next/image"
+
 interface CreatorHeaderProps {
   displayName: string
   avatarUrl: string | null
@@ -17,13 +18,24 @@ export function CreatorHeader({
     <header>
       <div
         style={{
+          position: "relative",
           height: 160,
-          background: bannerUrl ? `url(${bannerUrl}) center/cover` : "#e5e5e5",
+          background: "#e5e5e5",
+          overflow: "hidden",
         }}
-      />
+      >
+        {bannerUrl ? (
+          <Image
+            src={bannerUrl}
+            alt={`${displayName} banner`}
+            fill
+            sizes="100vw"
+            style={{ objectFit: "cover" }}
+          />
+        ) : null}
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <Image
             src={avatarUrl}
             alt={`${displayName}'s avatar`}
