@@ -52,4 +52,8 @@ export const tipEventBus = {
     emitter.on(eventName, listener)
     return () => emitter.off(eventName, listener)
   },
+
+  close(): void {
+    emitter.removeAllListeners()
+  },
 }

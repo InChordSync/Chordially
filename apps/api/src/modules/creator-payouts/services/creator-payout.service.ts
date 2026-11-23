@@ -16,6 +16,8 @@ import { paymentIdempotencyGuard } from "../../payments/services/payment-idempot
 import {
   toCreatorPayoutResponse,
   type CreatorPayoutResponse,
+  type CreatorPayoutEligibilityReason,
+  type CreatorPayoutEligibilityResult,
   type PaginatedCreatorPayouts,
 } from "../types/creator-payout.types.js"
 
@@ -44,6 +46,91 @@ async function findOwnCreatorProfile(userId: string) {
 }
 
 export const creatorPayoutService = {
+  /**
+   * Read-only preview of the rules enforced by `initiatePayout`. Every rule
+   * is evaluated so callers can show all reasons at once instead of fixing
+   * one problem at a time. No anchor calls or writes happen here.
+   */
+  async checkEligibility(
+    userId: string,
+    amount: string,
+    assetCode: TipAssetCode
+  ): Promise<CreatorPayoutEligibilityResult> {
+    const reasons: CreatorPayoutEligibilityReason[] = []
+    const [creator, account] = await Promise.all([
+      creatorService.findByUserId(userId),
+      userService.findById(userId),
+    ])
+
+    if (!creator) {
+      reasons.push({
+        code: "CREATOR_PROFILE_NOT_FOUND",
+        message: "No creator profile exists for this account",
+      })
+    } else if (!creator.isVerified) {
+      reasons.push({
+        code: "CREATOR_NOT_VERIFIED",
+        message: "Your creator profile must be verified before withdrawing",
+      })
+    }
+
+    if (account && !account.emailVerified) {
+      reasons.push({
+        code: "EMAIL_NOT_VERIFIED",
+        message: "Verify your email address before withdrawing funds",
+      })
+    }
+
+    if (Number(amount) < env.CREATOR_PAYOUT_MINIMUM_AMOUNT) {
+      reasons.push({
+        code: "PAYOUT_BELOW_MINIMUM",
+        message: `Payouts must be at least ${env.CREATOR_PAYOUT_MINIMUM_AMOUNT} ${assetCode}`,
+      })
+    }
+
+    let balance: string | null = null
+    const wallet = await walletRepository.findByUserId(userId)
+    if (!wallet) {
+      reasons.push({ code: "WALLET_NOT_FOUND", message: "No wallet exists for this user" })
+    } else {
+      if (wallet.walletType !== "custodial") {
+        reasons.push({
+          code: "WALLET_NOT_CUSTODIAL",
+          message: "A custodial wallet is required for payouts",
+        })
+      }
+
+      try {
+        balance = await stellarClient.getAssetBalance(
+          { publicKey: wallet.publicKey },
+          toAssetDescriptor(assetCode)
+        )
+        if (Number(balance) < Number(amount)) {
+          reasons.push({
+            code: "INSUFFICIENT_BALANCE",
+            message: "Wallet balance is lower than the requested payout",
+          })
+        }
+      } catch (error) {
+        logger.warn("Unable to read balance for payout eligibility", {
+          userId,
+          error: errorMessage(error),
+        })
+        reasons.push({
+          code: "BALANCE_UNAVAILABLE",
+          message: "The wallet balance could not be checked right now",
+        })
+      }
+    }
+
+    return {
+      eligible: reasons.length === 0,
+      reasons,
+      minimumAmount: env.CREATOR_PAYOUT_MINIMUM_AMOUNT,
+      balance,
+    }
+  },
+
   /**
    * Requests a cash-out of accumulated tips: authenticates the creator's
    * custodial wallet with the anchor and starts a SEP-24 interactive
