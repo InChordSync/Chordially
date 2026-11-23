@@ -49,7 +49,11 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   }
 
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload
+    const payload = jwt.verify(token, env.JWT_SECRET, {
+      algorithms: ["HS256"],
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE,
+    }) as AccessTokenPayload
     req.userId = payload.sub
     next()
   } catch {

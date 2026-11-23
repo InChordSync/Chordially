@@ -15,6 +15,10 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   JWT_EXPIRES_IN: z.string().default("1h"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+  // Access tokens are pinned to these iss/aud claims so a token minted for
+  // another service (or another environment) cannot be replayed here.
+  JWT_ISSUER: z.string().min(1).default("chordially-api"),
+  JWT_AUDIENCE: z.string().min(1).default("chordially-web"),
   // How long a one-time email verification token stays valid (seconds).
   EMAIL_VERIFICATION_TTL_SECONDS: z.coerce.number().int().positive().default(24 * 60 * 60),
   // How long a one-time password reset token stays valid (seconds).
@@ -79,6 +83,19 @@ const envSchema = z.object({
   // redis://host:6379). When unset, the probe treats the app as having no
   // external cache dependency and reports the cache subsystem healthy.
   CACHE_URL: z.string().optional(),
+  // Live tip-feed events are delivered by an in-process bus by default. A
+  // multi-instance deployment must set "redis" plus REDIS_URL so a tip
+  // confirmed on one API instance reaches viewers connected to another.
+  TIP_EVENT_BUS: z.enum(["memory", "redis"]).default("memory"),
+  REDIS_URL: z.string().optional(),
+}).superRefine((value, ctx) => {
+  if (value.TIP_EVENT_BUS === "redis" && !value.REDIS_URL) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["REDIS_URL"],
+      message: "REDIS_URL is required when TIP_EVENT_BUS=redis",
+    })
+  }
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -7,10 +7,13 @@
     "dev": "dotenv -e .env -- tsx watch src/server.ts",
     "build": "dotenv -e .env.example -- prisma generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
     "lint": "dotenv -e .env.example -- prisma generate && eslint src",
     "typecheck": "dotenv -e .env.example -- prisma generate && tsc -p tsconfig.json --noEmit",
     "test": "dotenv -e .env.test -- prisma generate && dotenv -e .env.test -- prisma db push --skip-generate --accept-data-loss && dotenv -e .env.test -- vitest run",
-    "test:e2e:testnet": "dotenv -e .env.test -- prisma generate && dotenv -e .env.test -- prisma db push --skip-generate --accept-data-loss && dotenv -e .env.test -- vitest run -c vitest.e2e.config.ts"
+    "test:e2e:testnet": "dotenv -e .env.test -- prisma generate && dotenv -e .env.test -- prisma db push --skip-generate --accept-data-loss && dotenv -e .env.test -- vitest run -c vitest.e2e.config.ts",
+    "test:e2e:api": "dotenv -e .env.test -- prisma generate && dotenv -e .env.test -- prisma db push --skip-generate --accept-data-loss && dotenv -e .env.test -- vitest run -c vitest.e2e-api.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3.1075.0",
@@ -23,6 +26,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^12.1.0",
     "@nestjs/swagger": "^12.0.2",
+    "@nestjs/terminus": "^12.0.0",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "^6.5.0",
     "bcryptjs": "^2.4.3",
@@ -31,6 +35,7 @@
     "cors": "^2.8.6",
     "express": "^4.21.2",
     "helmet": "^8.3.0",
+    "ioredis": "^5.4.2",
     "jsonwebtoken": "^9.0.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
