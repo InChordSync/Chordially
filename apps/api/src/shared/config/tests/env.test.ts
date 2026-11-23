@@ -31,6 +31,19 @@ describe("envBoolean", () => {
   })
 })
 
+describe("rate-limit environment defaults", () => {
+  it("uses millisecond windows and the intended request limits", () => {
+    const result = parse({})
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.API_RATE_LIMIT_WINDOW_MS).toBe(60_000)
+      expect(result.data.API_RATE_LIMIT_MAX).toBe(100)
+      expect(result.data.WALLET_LINK_CHALLENGE_RATE_LIMIT_WINDOW_MS).toBe(60_000)
+      expect(result.data.WALLET_LINK_CHALLENGE_RATE_LIMIT_MAX).toBe(5)
+    }
+  })
+})
+
 describe("production env validation", () => {
   const production = {
     NODE_ENV: "production",

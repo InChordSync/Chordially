@@ -20,6 +20,12 @@ Copy `apps/api/.env.example` to `apps/api/.env`:
 | `DATABASE_URL`   | SQLite connection string for Prisma (e.g. `file:./dev.db`).                                         |
 | `JWT_SECRET`     | Secret used to sign authentication JWTs.                                                            |
 | `JWT_EXPIRES_IN` | JWT expiry (e.g. `1h`).                                                                             |
+| `REGISTER_RATE_LIMIT_WINDOW_MS` / `REGISTER_RATE_LIMIT_MAX` | Registration attempts per account window (defaults: `60000` ms / `5`). |
+| `LOGIN_RATE_LIMIT_WINDOW_MS` / `LOGIN_RATE_LIMIT_PER_ACCOUNT` / `LOGIN_RATE_LIMIT_PER_IP` | Login attempts per account and IP (defaults: `60000` ms / `5` per account / `20` per IP). |
+| `API_RATE_LIMIT_WINDOW_MS` / `API_RATE_LIMIT_MAX` | Global API request window and limit (defaults: `60000` ms / `100`). |
+| `AUTH_RATE_LIMIT_WINDOW_MS` / `AUTH_RATE_LIMIT_MAX` | Auth route request window and limit (defaults: `60000` ms / `5`). |
+| `WALLET_LINK_CHALLENGE_RATE_LIMIT_WINDOW_MS` / `WALLET_LINK_CHALLENGE_RATE_LIMIT_MAX` | Wallet-link challenge window and limit (defaults: `60000` ms / `5`). |
+| `CREATOR_PAYOUT_RATE_LIMIT_WINDOW_MS` / `CREATOR_PAYOUT_RATE_LIMIT_MAX` | Creator payout request window and limit (defaults: `60000` ms / `5`). |
 
 `apps/api/.env.test` is committed with safe, test-only values and is used
 automatically by the `test` script.

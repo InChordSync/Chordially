@@ -2,15 +2,22 @@ import { Controller, Get, Post, Param, Body, Req, Res, Next, UseGuards } from '@
 import type { Request, Response, NextFunction } from 'express';
 import { creatorPayoutService } from "../services/creator-payout.service.js";
 import { checkEligibilitySchema, createCreatorPayoutSchema } from "../validators/creator-payout.validators.js";
+import type { CheckEligibilityRequest, CreateCreatorPayoutRequest } from "../validators/creator-payout.validators.js";
 import { WebhookProvider, WebhookVerificationGuard } from "../../../shared/guards/webhook-verification.guard.js";
+import { Public } from "../../../shared/decorators/public.decorator.js";
+import { ZodValidationPipe } from "../../../shared/pipes/zod-validation.pipe.js";
 
 @Controller('creator-payouts')
 export class CreatorPayoutController {
   @Post()
-  async create(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
+  async create(
+    @Req() req: Request,
+    @Body(new ZodValidationPipe(createCreatorPayoutSchema)) input: CreateCreatorPayoutRequest,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ) {
     try {
-      const userId = (req as any).userId!;
-      const input = createCreatorPayoutSchema.parse(body);
+      const userId = req.userId!;
       const payout = await creatorPayoutService.initiatePayout(
         userId,
         input.amount,
@@ -23,6 +30,7 @@ export class CreatorPayoutController {
   }
 
   @Post('webhook')
+  @Public()
   @UseGuards(WebhookVerificationGuard)
   @WebhookProvider('creator-payout')
   async handleWebhook(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
@@ -33,11 +41,16 @@ export class CreatorPayoutController {
   }
 
   @Post('eligibility')
-  async checkEligibility(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
+  async checkEligibility(
+    @Req() req: Request,
+    @Body(new ZodValidationPipe(checkEligibilitySchema)) input: CheckEligibilityRequest,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ) {
     try {
-      const { amount, assetCode } = checkEligibilitySchema.parse(body ?? {});
+      const { amount, assetCode } = input;
       const result = await creatorPayoutService.checkEligibility(
-        (req as any).userId!,
+        req.userId!,
         amount,
         assetCode
       );
@@ -55,7 +68,7 @@ export class CreatorPayoutController {
   @Get()
   async list(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = (req as any).userId!;
+      const userId = req.userId!;
       const payouts = await creatorPayoutService.listPayoutsForCreator(userId);
       // N-075 payout history list
       return res.status(200).json(payouts);
@@ -73,7 +86,7 @@ export class CreatorPayoutController {
   @Get(':id')
   async getById(@Param('id') id: string, @Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = (req as any).userId!;
+      const userId = req.userId!;
       const payout = await creatorPayoutService.refreshPayoutStatus(userId, id);
       return res.status(200).json(payout);
     } catch (error) { next(error); }

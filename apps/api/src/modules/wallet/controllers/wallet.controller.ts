@@ -6,9 +6,12 @@ import { walletAuditLogger } from "../services/wallet-audit-logger.service.js";
 import { issueWalletLinkChallenge, verifyWalletLinkChallenge } from "../../../shared/wallet-link/challenge.js";
 import { AppError } from "../../../shared/errors/app-error.js";
 import { linkChallengeSchema, verifyWalletLinkSchema } from "../validators/wallet.validators.js";
+import type { LinkChallengeRequest, VerifyWalletLinkRequest } from "../validators/wallet.validators.js";
+import { ZodValidationPipe } from "../../../shared/pipes/zod-validation.pipe.js";
+import { env } from "../../../shared/config/env.js";
 
 function currentUserId(req: Request): string {
-  const userId = (req as any).userId;
+  const userId = req.userId;
   if (!userId) {
     throw new AppError(401, "UNAUTHORIZED", "Authentication required");
   }
@@ -18,18 +21,33 @@ function currentUserId(req: Request): string {
 @Controller('wallet')
 export class WalletController {
   @Post('link-challenge')
-  @Throttle({ default: { limit: 5, ttl: 60 } }) // N-062
-  async getLinkChallenge(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
+  @Throttle({
+    default: {
+      limit: env.WALLET_LINK_CHALLENGE_RATE_LIMIT_MAX,
+      ttl: env.WALLET_LINK_CHALLENGE_RATE_LIMIT_WINDOW_MS,
+    },
+  })
+  async getLinkChallenge(
+    @Req() req: Request,
+    @Body(new ZodValidationPipe(linkChallengeSchema)) input: LinkChallengeRequest,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ) {
     try {
-      const { publicKey } = linkChallengeSchema.parse(body ?? {});
+      const { publicKey } = input;
       return res.status(200).json(issueWalletLinkChallenge(publicKey));
     } catch (error) { next(error); }
   }
 
   @Post('link-verify')
-  async verifyChallenge(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
+  async verifyChallenge(
+    @Req() req: Request,
+    @Body(new ZodValidationPipe(verifyWalletLinkSchema)) input: VerifyWalletLinkRequest,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ) {
     try {
-      const { publicKey, challenge, signature } = verifyWalletLinkSchema.parse(body ?? {});
+      const { publicKey, challenge, signature } = input;
 
       if (!verifyWalletLinkChallenge(challenge, publicKey, signature)) {
         walletAuditLogger.logWalletEvent("wallet-link-verify", publicKey, "challenge_failed");

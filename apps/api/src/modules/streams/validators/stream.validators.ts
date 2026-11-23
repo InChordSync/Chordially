@@ -12,5 +12,6 @@ export const startStreamSchema = z
       .optional(),
   })
   .strict()
+  .default({})
 
 export type StartStreamRequest = z.infer<typeof startStreamSchema>
