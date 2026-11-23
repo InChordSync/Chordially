@@ -77,12 +77,22 @@ export const depositService = {
       )
     }
 
-    const deposit = await depositRepository.create({
+    // A retried request that got as far as the anchor can come back with the
+    // same anchor transaction id. The unique index turns that into an
+    // idempotent no-op instead of a second deposit row.
+    const { deposit, created } = await depositRepository.findOrCreateByAnchorTransactionId({
       userId,
       assetCode,
       anchorTransactionId: interactive.id,
       interactiveUrl: interactive.url,
     })
+    if (!created && deposit.userId !== userId) {
+      throw new AppError(
+        409,
+        "DEPOSIT_ANCHOR_CONFLICT",
+        "This anchor transaction belongs to a different account"
+      )
+    }
 
     const response = toWalletDepositResponse(deposit)
 

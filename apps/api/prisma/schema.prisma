@@ -45,6 +45,12 @@ model CreatorProfile {
   tipPayouts   TipPayout[]
   payouts      CreatorPayout[]
   bookmarkedBy Bookmark[]
+
+  // Serves the browse/filter endpoint (creator-search-index.service.ts), which
+  // filters by verification and orders by genre/location.
+  @@index([genre])
+  @@index([location])
+  @@index([isVerified])
 }
 
 model FanProfile {
@@ -208,6 +214,7 @@ model CreatorPayout {
   updatedAt           DateTime @updatedAt
 
   @@unique([creatorId, idempotencyKey])
+  @@unique([anchorTransactionId])
   @@index([creatorId])
 }
 
@@ -241,11 +248,12 @@ model TransactionIdempotencyRecord {
 model WalletDeposit {
   id                  String   @id @default(cuid())
   userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   assetCode           String
-  anchorTransactionId String
+  // Unique so a duplicated SEP-24 webhook is an idempotent no-op.
+  anchorTransactionId String   @unique
   interactiveUrl      String
-  status              String   @default("incomplete")
+  status              WalletDepositStatus @default(incomplete)
   amountIn            String?
   failureReason       String?
   createdAt           DateTime @default(now())
@@ -271,6 +279,8 @@ model Notification {
 
   @@index([recipientId])
   @@index([recipientId, read])
+  // Supports ORDER BY createdAt DESC on the recipient's inbox.
+  @@index([recipientId, createdAt])
 }
 
 // Server-side session for the access/refresh token pair issued at
