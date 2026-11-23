@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
+import { DepositController } from './controllers/deposit.controller.js';
 import { WalletController } from './controllers/wallet.controller.js';
-import { DepositControllerLegacy } from './controllers/deposit.controller.legacy.js';
 
 @Module({
-  controllers: [WalletController, DepositControllerLegacy],
+  controllers: [WalletController, DepositController],
 })
 export class WalletModule {}
