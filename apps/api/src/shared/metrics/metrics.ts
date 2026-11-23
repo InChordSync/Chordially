@@ -66,6 +66,30 @@ class MetricsRegistry {
     return { counters, histograms, gauges }
   }
 
+  /** Prometheus text exposition of the same in-memory registry. */
+  toPrometheus(): string {
+    const lines: string[] = []
+
+    for (const [name, value] of this.counters) {
+      lines.push(`# TYPE ${name} counter`, `${name} ${value}`)
+    }
+    for (const [name, value] of this.gauges) {
+      lines.push(`# TYPE ${name} gauge`, `${name} ${value}`)
+    }
+    for (const [name, samples] of this.histograms) {
+      const summary = summarize(samples)
+      lines.push(
+        `# TYPE ${name} summary`,
+        `${name}_count ${summary.count}`,
+        `${name}_sum ${summary.sumMs}`,
+        `${name}_avg_ms ${summary.avgMs}`,
+        `${name}_p95_ms ${summary.p95Ms}`
+      )
+    }
+
+    return lines.length > 0 ? `${lines.join("\n")}\n` : ""
+  }
+
   /** Test-only: clears all recorded state. */
   reset(): void {
     this.counters.clear()
