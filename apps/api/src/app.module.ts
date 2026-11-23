@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './shared/logger/logging.interceptor.js';
+import { AppErrorFilter } from './common/filters/app-error.filter.js';
+import { DatabaseModule } from './shared/database/prisma.js';
+import { TipEventBusLifecycle } from './shared/realtime/tip-event-bus.lifecycle.js';
+import { ReconciliationSchedulerService } from './modules/reconciliation/services/reconciliation-scheduler.service.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { UserModule } from './modules/users/user.module.js';
 import { WalletModule } from './modules/wallet/wallet.module.js';
@@ -18,14 +22,18 @@ import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
   imports: [
+    DatabaseModule,
     ThrottlerModule.forRoot([{ ttl: 60, limit: 100 }]),
     AuthModule, UserModule, WalletModule, CreatorModule, FanModule, 
     DepositModule, CreatorPayoutModule, NotificationModule, SearchModule, 
     AdminModule, TipModule, StreamModule, HealthModule
   ],
   providers: [
+    { provide: APP_FILTER, useClass: AppErrorFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor }
+    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+    ReconciliationSchedulerService,
+    TipEventBusLifecycle
   ]
 })
 export class AppModule {}
