@@ -1,17 +1,49 @@
-import { Controller, Post, Get, Put, Param, Body, Req, Res, Next } from '@nestjs/common';
-import type { Request, Response, NextFunction } from 'express';
+
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+} from "@nestjs/common";
+
+import type { Request } from "express";
+
 import { tipService } from "../services/tip.service.js";
 import { toTipResponse } from "../types/tip.types.js";
 
-@Controller('tips')
+interface AuthenticatedRequest extends Request {
+  userId: string;
+}
+
+interface SendTipDto {
+  creatorId: string;
+  streamId?: string;
+  amount: number;
+  token: string;
+}
+
+@Controller("tips")
 export class TipController {
+  constructor() {}
+
   @Post()
-  async sendTip(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
-    try {
-      const fanUserId = (req as any).userId!;
-      const { creatorId, streamId, amount, token } = body;
-      const tip = await tipService.sendTip(fanUserId, creatorId, amount, token, streamId);
-      return res.status(201).json(toTipResponse(tip));
-    } catch (error) { next(error); }
+  @HttpCode(HttpStatus.CREATED)
+  async sendTip(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: SendTipDto,
+  ) {
+    const { creatorId, streamId, amount, token } = body;
+
+    const tip = await tipService.sendTip(
+      req.userId,
+      creatorId,
+      amount,
+      token,
+      streamId,
+    );
+
+    return toTipResponse(tip);
   }
 }
