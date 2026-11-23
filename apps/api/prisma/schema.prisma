@@ -329,3 +329,8 @@ model PasswordResetToken {
 
   @@index([userId])
 }
+model User {
+  // ...existing fields
+  role      String   @default("user")
+  // ...existing relations
+}
