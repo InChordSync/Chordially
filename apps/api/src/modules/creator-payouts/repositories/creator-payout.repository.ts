@@ -1,3 +1,4 @@
+import { CreatorPayoutStatus } from "@prisma/client"
 import { prisma } from "../../../shared/database/prisma.js"
 import type { CreateCreatorPayoutInput, CreatorPayout } from "../types/creator-payout.types.js"
 
@@ -10,7 +11,7 @@ export const creatorPayoutRepository = {
 
   create(input: CreateCreatorPayoutInput): Promise<CreatorPayout> {
     return prisma.creatorPayout.create({
-      data: { ...input, status: "awaiting_anchor_details" },
+      data: { ...input, status: CreatorPayoutStatus.awaiting_anchor_details },
     })
   },
 
@@ -41,18 +42,21 @@ export const creatorPayoutRepository = {
   markSubmitted(id: string, txHash: string, attempts: number): Promise<CreatorPayout> {
     return prisma.creatorPayout.update({
       where: { id },
-      data: { status: "submitted", txHash, attempts },
+      data: { status: CreatorPayoutStatus.submitted, txHash, attempts },
     })
   },
 
   markCompleted(id: string): Promise<CreatorPayout> {
-    return prisma.creatorPayout.update({ where: { id }, data: { status: "completed" } })
+    return prisma.creatorPayout.update({
+      where: { id },
+      data: { status: CreatorPayoutStatus.completed },
+    })
   },
 
   markFailed(id: string, failureReason: string, attempts: number): Promise<CreatorPayout> {
     return prisma.creatorPayout.update({
       where: { id },
-      data: { status: "failed", failureReason, attempts },
+      data: { status: CreatorPayoutStatus.failed, failureReason, attempts },
     })
   },
 }

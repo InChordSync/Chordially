@@ -1,7 +1,9 @@
+import type { NotificationType } from "@prisma/client"
+
 export interface NotificationResponse {
   id: string
   actorId: string | null
-  type: string
+  type: NotificationType
   title: string
   body: string
   metadata: Record<string, unknown>
@@ -12,7 +14,7 @@ export interface NotificationResponse {
 export function toNotificationResponse(notification: {
   id: string
   actorId: string | null
-  type: string
+  type: NotificationType
   title: string
   body: string
   metadata: string

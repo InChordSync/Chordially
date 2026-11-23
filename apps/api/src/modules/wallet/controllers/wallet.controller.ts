@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Req, Res, Next } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response, NextFunction } from 'express';
+import { requestUserId } from "../../../shared/middleware/request-user-id.js";
 import { walletService } from "../services/wallet.service.js";
 
 @Controller('wallet')
@@ -25,8 +26,8 @@ export class WalletController {
   @Get('me')
   async getMe(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = (req as any).userId!;
-      const wallet = await walletService.getPrimaryWallet(userId);
+      const userId = requestUserId(req);
+      const wallet = await walletService.getWalletForUser(userId);
       return res.status(200).json({ wallet });
     } catch (error) { next(error); }
   }
@@ -34,7 +35,7 @@ export class WalletController {
   @Post('usdc-trustline')
   async establishUsdcTrustline(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
-      const userId = (req as any).userId!;
+      const userId = requestUserId(req);
       const result = await walletService.establishUsdcTrustline(userId);
       return res.status(200).json(result);
     } catch (error) { next(error); }

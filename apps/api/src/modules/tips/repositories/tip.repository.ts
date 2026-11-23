@@ -1,3 +1,4 @@
+import { TipStatus } from "@prisma/client"
 import { prisma } from "../../../shared/database/prisma.js"
 import type { CreateTipInput, Tip } from "../types/tip.types.js"
 
@@ -18,7 +19,7 @@ export const tipRepository = {
         asset: input.asset ?? "native",
         idempotencyKey: input.idempotencyKey,
         retriedFromTipId: input.retriedFromTipId,
-        status: "pending",
+        status: TipStatus.pending,
       },
     })
   },
@@ -34,37 +35,37 @@ export const tipRepository = {
   /** Tips stuck in "submitted" since before the given cutoff — reconciliation's input. */
   findStuckSubmitted(updatedBefore: Date): Promise<Tip[]> {
     return prisma.tip.findMany({
-      where: { status: "submitted", updatedAt: { lte: updatedBefore } },
+      where: { status: TipStatus.submitted, updatedAt: { lte: updatedBefore } },
       orderBy: { updatedAt: "asc" },
     })
   },
 
-  updateStatus(id: string, status: string): Promise<Tip> {
+  updateStatus(id: string, status: TipStatus): Promise<Tip> {
     return prisma.tip.update({ where: { id }, data: { status } })
   },
 
   markAwaitingSignature(id: string, unsignedTransactionXdr: string): Promise<Tip> {
     return prisma.tip.update({
       where: { id },
-      data: { status: "awaiting_signature", unsignedTransactionXdr },
+      data: { status: TipStatus.awaiting_signature, unsignedTransactionXdr },
     })
   },
 
   markSubmitted(id: string, attempts: number): Promise<Tip> {
-    return prisma.tip.update({ where: { id }, data: { status: "submitted", attempts } })
+    return prisma.tip.update({ where: { id }, data: { status: TipStatus.submitted, attempts } })
   },
 
   markConfirmed(id: string, txHash: string, attempts: number): Promise<Tip> {
     return prisma.tip.update({
       where: { id },
-      data: { status: "confirmed", txHash, attempts },
+      data: { status: TipStatus.confirmed, txHash, attempts },
     })
   },
 
   markFailed(id: string, failureReason: string, attempts: number): Promise<Tip> {
     return prisma.tip.update({
       where: { id },
-      data: { status: "failed", failureReason, attempts },
+      data: { status: TipStatus.failed, failureReason, attempts },
     })
   },
 }

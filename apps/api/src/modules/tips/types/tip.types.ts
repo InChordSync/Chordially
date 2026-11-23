@@ -1,7 +1,9 @@
+import type { TipStatus as PrismaTipStatus } from "@prisma/client"
 import type { TipAssetCode } from "../../../shared/stellar/assets.js"
 import { toTipPayoutResponse, type TipPayout, type TipPayoutResponse } from "./tip-payout.types.js"
 
-export type TipStatus = "pending" | "awaiting_signature" | "submitted" | "confirmed" | "failed"
+// Single source of truth: the state machine is declared in schema.prisma.
+export type TipStatus = PrismaTipStatus
 export type { TipAssetCode }
 
 export interface Tip {
@@ -12,7 +14,7 @@ export interface Tip {
   streamId: string | null
   amount: string
   asset: string
-  status: string
+  status: TipStatus
   /** Set only while status = "awaiting_signature" (a linked fan wallet). */
   unsignedTransactionXdr: string | null
   txHash: string | null
@@ -54,7 +56,7 @@ export function toTipResponse(tip: Tip, payouts?: TipPayout[]): TipResponse {
     streamId: tip.streamId,
     amount: tip.amount,
     asset: tip.asset,
-    status: tip.status as TipStatus,
+    status: tip.status,
     unsignedTransactionXdr: tip.unsignedTransactionXdr,
     txHash: tip.txHash,
     failureReason: tip.failureReason,
