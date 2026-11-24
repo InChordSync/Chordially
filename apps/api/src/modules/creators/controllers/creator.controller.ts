@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Param, Body, Req, Res, Next } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
+import { requestUserId } from "../../../shared/middleware/request-user-id.js";
 import { creatorService } from "../services/creator.service.js";
 import { toCreatorResponse } from "../types/creator.types.js";
 import { createCreatorProfileSchema, updateCreatorProfileSchema } from "../validators/creator.validators.js";

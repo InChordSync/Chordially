@@ -7,6 +7,55 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// State machines that used to live only in comments and hand-written
+// TypeScript unions. Keeping them in the schema makes every writer (API,
+// reconciliation job, webhooks) agree on the same set of values.
+enum TipStatus {
+  pending
+  awaiting_signature
+  submitted
+  confirmed
+  failed
+}
+
+enum TipPayoutStatus {
+  pending
+  submitted
+  confirmed
+  failed
+}
+
+enum CreatorPayoutStatus {
+  awaiting_anchor_details
+  submitted
+  completed
+  failed
+}
+
+// Mirrors SEP-24's own transaction states (see shared/anchor/sep24-client.ts)
+// rather than inventing a parallel vocabulary for deposit records.
+enum WalletDepositStatus {
+  incomplete
+  pending_user_transfer_start
+  pending_anchor
+  completed
+  error
+  expired
+}
+
+enum WalletType {
+  custodial
+  linked
+}
+
+enum NotificationType {
+  FOLLOW
+  UNFOLLOW
+  DISCOVERY_TRENDING
+  NEW_CREATOR_POST
+  MENTION
+}
+
 model User {
   id                   String                  @id @default(cuid())
   email                String                  @unique
@@ -74,7 +123,7 @@ model Wallet {
   // "linked" (an external wallet the user controls themselves — the four
   // encrypted* fields are null and every field below stays null forever).
   // Guard any decryptSecret() call site on this before assuming custodial.
-  walletType       String   @default("custodial")
+  walletType       WalletType @default(custodial)
   encryptedSecret  String?
   encryptedDataKey String?
   iv               String?
@@ -95,9 +144,12 @@ model Tip {
   id             String    @id @default(cuid())
   idempotencyKey String
   fanUserId      String
-  fan            User      @relation(fields: [fanUserId], references: [id], onDelete: Cascade)
+  // Money records outlive the account that created them. Deleting a user with
+  // tips is blocked; account deletion goes through the anonymisation path
+  // instead (see modules/users/services/user-anonymisation.service.ts).
+  fan            User      @relation(fields: [fanUserId], references: [id], onDelete: Restrict)
   creatorId      String
-  creator        CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creator        CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Restrict)
   streamId       String?
   stream         Stream?   @relation(fields: [streamId], references: [id], onDelete: SetNull)
   amount         String
@@ -108,7 +160,7 @@ model Tip {
   // A linked fan wallet instead goes pending -> awaiting_signature (see
   // unsignedTransactionXdr) -> confirmed|failed once the fan submits their
   // own signature via POST /api/tips/:id/submit-signed.
-  status         String    @default("pending")
+  status         TipStatus @default(pending)
   // Set only while status = "awaiting_signature": the transaction the fan's
   // linked wallet needs to sign externally to complete this tip.
   unsignedTransactionXdr String?
@@ -128,6 +180,12 @@ model Tip {
   retries          Tip[]   @relation("TipRetries")
 
   @@unique([fanUserId, idempotencyKey])
+  // Reconciliation scans unresolved tips by status then last update.
+  @@index([status, updatedAt])
+  // Creator tip feeds / payout history are read newest-first by creator.
+  @@index([creatorId, createdAt])
+  // Live stream tip backlogs are read newest-first by stream.
+  @@index([streamId, createdAt])
 }
 
 // A creator's live session. Tips submitted with a streamId are broadcast in
@@ -142,6 +200,8 @@ model Stream {
   tips         Tip[]
   payoutConfig StreamPayoutConfig?
 
+  @@index([creatorId])
+  // Live-stream lookups filter by creator and open sessions (endedAt is null).
   @@index([creatorId, endedAt])
 }
 
@@ -165,6 +225,7 @@ model StreamPayoutConfigPayee {
   percentage     Float
 
   @@unique([payoutConfigId, creatorId])
+  @@index([creatorId])
 }
 
 // One payee's share of a split tip, snapshotted from StreamPayoutConfig at
@@ -179,14 +240,19 @@ model TipPayout {
   tipId         String
   tip           Tip      @relation(fields: [tipId], references: [id], onDelete: Cascade)
   creatorId     String
-  creator       CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creator       CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Restrict)
   percentage    Float
   amount        String
-  status        String   @default("pending")
+  status        TipPayoutStatus @default(pending)
   txHash        String?
   failureReason String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  // findByTipId runs on every tip transition; payout queries also group by
+  // creator for a creator's earnings history.
+  @@index([tipId])
+  @@index([creatorId])
 }
 
 // A creator's cash-out of accumulated on-chain tips to fiat via a SEP-24
@@ -198,11 +264,13 @@ model CreatorPayout {
   id                  String   @id @default(cuid())
   idempotencyKey      String
   creatorId           String
-  creator             CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creator             CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Restrict)
   assetCode           String
   amount              String
   // awaiting_anchor_details -> submitted -> completed | failed
-  status              String   @default("awaiting_anchor_details")
+  status              CreatorPayoutStatus @default(awaiting_anchor_details)
+  // The anchor's transaction id is the idempotency anchor for webhooks: a
+  // redelivered webhook must not insert a second payout row.
   anchorTransactionId String
   interactiveUrl      String
   txHash              String?
@@ -245,11 +313,12 @@ model TransactionIdempotencyRecord {
 model WalletDeposit {
   id                  String   @id @default(cuid())
   userId              String
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   assetCode           String
-  anchorTransactionId String
+  // Unique so a duplicated SEP-24 webhook is an idempotent no-op.
+  anchorTransactionId String   @unique
   interactiveUrl      String
-  status              String   @default("incomplete")
+  status              WalletDepositStatus @default(incomplete)
   amountIn            String?
   failureReason       String?
   createdAt           DateTime @default(now())
@@ -266,7 +335,7 @@ model Notification {
   recipientId String
   recipient   User     @relation(fields: [recipientId], references: [id], onDelete: Cascade)
   actorId     String?
-  type        String
+  type        NotificationType
   title       String
   body        String
   metadata    String   @default("{}")

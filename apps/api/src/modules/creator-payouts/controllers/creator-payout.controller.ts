@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Param, Body, Req, Res, Next, UseGuards } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
+import { requestUserId } from "../../../shared/middleware/request-user-id.js";
 import { creatorPayoutService } from "../services/creator-payout.service.js";
 import { checkEligibilitySchema, createCreatorPayoutSchema } from "../validators/creator-payout.validators.js";
 import type { CheckEligibilityRequest, CreateCreatorPayoutRequest } from "../validators/creator-payout.validators.js";

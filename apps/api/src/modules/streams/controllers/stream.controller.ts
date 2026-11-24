@@ -1,5 +1,6 @@
 import { Controller, Post, Req, Res, Next, Param, Body } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
+import { requestUserId } from "../../../shared/middleware/request-user-id.js";
 import { streamService } from "../services/stream.service.js";
 import { startStreamSchema } from "../validators/stream.validators.js";
 import type { StartStreamRequest } from "../validators/stream.validators.js";

@@ -9,7 +9,6 @@ import type {
   TrustlineResponse,
   Wallet,
   WalletMeResponse,
-  WalletType,
 } from "../types/wallet.types.js"
 import { verifyWalletLinkChallenge } from "../../../shared/wallet-link/challenge.js"
 import { walletAuditLogger } from "./wallet-audit-logger.service.js"
@@ -191,7 +190,7 @@ export const walletService = {
       publicKey: wallet.publicKey,
       balance,
       network: wallet.network,
-      walletType: wallet.walletType as WalletType,
+      walletType: wallet.walletType,
       usdcTrustline: wallet.usdcTrustline,
       usdcBalance,
     }

@@ -1,9 +1,12 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "../../../shared/database/prisma.js"
 import type {
   CreateFanProfileInput,
   FanProfile,
   UpdateFanProfileInput,
 } from "../types/fan.types.js"
+
+type DbClient = Prisma.TransactionClient
 
 type RawFanProfile = {
   id: string
@@ -23,13 +26,15 @@ function fromPrisma(raw: RawFanProfile): FanProfile {
 }
 
 export const fanRepository = {
-  async findByUserId(userId: string): Promise<FanProfile | null> {
-    const raw = await prisma.fanProfile.findUnique({ where: { userId } })
+  async findByUserId(userId: string, tx?: DbClient): Promise<FanProfile | null> {
+    const client = tx ?? prisma
+    const raw = await client.fanProfile.findUnique({ where: { userId } })
     return raw ? fromPrisma(raw) : null
   },
 
-  async findById(id: string): Promise<FanProfile | null> {
-    const raw = await prisma.fanProfile.findUnique({ where: { id } })
+  async findById(id: string, tx?: DbClient): Promise<FanProfile | null> {
+    const client = tx ?? prisma
+    const raw = await client.fanProfile.findUnique({ where: { id } })
     return raw ? fromPrisma(raw) : null
   },
 
@@ -43,16 +48,18 @@ export const fanRepository = {
     return fromPrisma(raw)
   },
 
-  async update(id: string, input: UpdateFanProfileInput): Promise<FanProfile> {
-    const raw = await prisma.fanProfile.update({
+  async update(id: string, input: UpdateFanProfileInput, tx?: DbClient): Promise<FanProfile> {
+    const client = tx ?? prisma
+    const raw = await client.fanProfile.update({
       where: { id },
       data: input,
     })
     return fromPrisma(raw)
   },
 
-  async setGenrePrefs(id: string, genrePrefs: string[]): Promise<FanProfile> {
-    const raw = await prisma.fanProfile.update({
+  async setGenrePrefs(id: string, genrePrefs: string[], tx?: DbClient): Promise<FanProfile> {
+    const client = tx ?? prisma
+    const raw = await client.fanProfile.update({
       where: { id },
       data: { genrePrefs: JSON.stringify(genrePrefs) },
     })

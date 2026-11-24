@@ -1,4 +1,7 @@
-export type CreatorPayoutStatus = "awaiting_anchor_details" | "submitted" | "completed" | "failed"
+import type { CreatorPayoutStatus as PrismaCreatorPayoutStatus } from "@prisma/client"
+
+// Declaration lives in schema.prisma; this alias keeps the public type name.
+export type CreatorPayoutStatus = PrismaCreatorPayoutStatus
 
 export interface CreatorPayout {
   id: string
@@ -6,7 +9,7 @@ export interface CreatorPayout {
   creatorId: string
   assetCode: string
   amount: string
-  status: string
+  status: CreatorPayoutStatus
   anchorTransactionId: string
   interactiveUrl: string
   txHash: string | null
@@ -77,7 +80,7 @@ export function toCreatorPayoutResponse(payout: CreatorPayout): CreatorPayoutRes
     id: payout.id,
     assetCode: payout.assetCode,
     amount: payout.amount,
-    status: payout.status as CreatorPayoutStatus,
+    status: payout.status,
     interactiveUrl: payout.interactiveUrl,
     txHash: payout.txHash,
     failureReason: payout.failureReason,

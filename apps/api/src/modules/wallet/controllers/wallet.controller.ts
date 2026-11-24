@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Req, Res, Next } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response, NextFunction } from 'express';
+import { requestUserId } from "../../../shared/middleware/request-user-id.js";
 import { walletService } from "../services/wallet.service.js";
 import { walletAuditLogger } from "../services/wallet-audit-logger.service.js";
 import { issueWalletLinkChallenge, verifyWalletLinkChallenge } from "../../../shared/wallet-link/challenge.js";

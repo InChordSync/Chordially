@@ -1,3 +1,4 @@
+import type { WalletDepositStatus } from "@prisma/client"
 import { prisma } from "../../../shared/database/prisma.js"
 import type { CreateWalletDepositInput, WalletDeposit } from "../types/deposit.types.js"
 
@@ -32,7 +33,7 @@ export const depositRepository = {
 
   updateStatus(
     id: string,
-    data: { status: string; amountIn?: string | null; failureReason?: string | null }
+    data: { status: WalletDepositStatus; amountIn?: string | null; failureReason?: string | null }
   ): Promise<WalletDeposit> {
     return prisma.walletDeposit.update({ where: { id }, data })
   },
