@@ -3,6 +3,8 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './shared/logger/logging.interceptor.js';
 import { AppErrorFilter } from './common/filters/app-error.filter.js';
+import { JwtAuthGuard } from './shared/guards/jwt-auth.guard.js';
+import { env } from './shared/config/env.js';
 import { DatabaseModule } from './shared/database/prisma.js';
 import { TipEventBusLifecycle } from './shared/realtime/tip-event-bus.lifecycle.js';
 import { ReconciliationSchedulerService } from './modules/reconciliation/services/reconciliation-scheduler.service.js';
@@ -23,7 +25,10 @@ import { HealthModule } from './modules/health/health.module.js';
 @Module({
   imports: [
     DatabaseModule,
-    ThrottlerModule.forRoot([{ ttl: 60, limit: 100 }]),
+    ThrottlerModule.forRoot([{
+      ttl: env.API_RATE_LIMIT_WINDOW_MS,
+      limit: env.API_RATE_LIMIT_MAX,
+    }]),
     AuthModule, UserModule, WalletModule, CreatorModule, FanModule, 
     DepositModule, CreatorPayoutModule, NotificationModule, SearchModule, 
     AdminModule, TipModule, StreamModule, HealthModule
@@ -31,6 +36,7 @@ import { HealthModule } from './modules/health/health.module.js';
   providers: [
     { provide: APP_FILTER, useClass: AppErrorFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
     ReconciliationSchedulerService,
     TipEventBusLifecycle

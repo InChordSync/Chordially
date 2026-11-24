@@ -3,7 +3,9 @@ import type { Response, NextFunction } from 'express';
 import { env } from '../../../shared/config/env.js';
 import { deploymentProbesController } from './deployment-probes.controller.js';
 import { dependencyHealthService } from '../services/dependency-health.service.js';
+import { Public } from '../../../shared/decorators/public.decorator.js';
 
+@Public()
 @Controller('health')
 export class HealthController {
   @Get()

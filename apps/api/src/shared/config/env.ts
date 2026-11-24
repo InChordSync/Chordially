@@ -27,6 +27,19 @@ export const envSchema = z.object({
   EMAIL_VERIFICATION_TTL_SECONDS: z.coerce.number().int().positive().default(24 * 60 * 60),
   // How long a one-time password reset token stays valid (seconds).
   PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  REGISTER_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  REGISTER_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  LOGIN_RATE_LIMIT_PER_ACCOUNT: z.coerce.number().int().positive().default(5),
+  LOGIN_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(20),
+  API_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  API_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  WALLET_LINK_CHALLENGE_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  WALLET_LINK_CHALLENGE_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  CREATOR_PAYOUT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  CREATOR_PAYOUT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   // Brute-force protection for login: after this many failed attempts an
   // account is temporarily locked for the configured duration (seconds).
   LOGIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().positive().default(5),

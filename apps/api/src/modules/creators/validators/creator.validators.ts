@@ -10,6 +10,8 @@ export const createCreatorProfileSchema = z.object({
 export const updateCreatorProfileSchema = createCreatorProfileSchema.partial().extend({
   bio: z.string().max(2000).nullable().optional(),
   avatarUrl: z.string().url().nullable().optional(),
+  genre: z.string().max(80).nullable().optional(),
+  location: z.string().max(120).nullable().optional(),
 })
 
 export type CreateCreatorProfileRequest = z.infer<typeof createCreatorProfileSchema>

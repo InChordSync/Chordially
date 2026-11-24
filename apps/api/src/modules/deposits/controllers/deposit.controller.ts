@@ -4,9 +4,12 @@ import { depositService } from "../../wallet/services/deposit.service.js";
 import { createDepositSchema } from "../../wallet/validators/deposit.validators.js";
 import { AppError } from "../../../shared/errors/app-error.js";
 import { WebhookProvider, WebhookVerificationGuard } from "../../../shared/guards/webhook-verification.guard.js";
+import { Public } from "../../../shared/decorators/public.decorator.js";
+import { ZodValidationPipe } from "../../../shared/pipes/zod-validation.pipe.js";
+import type { CreateDepositRequest } from "../../wallet/validators/deposit.validators.js";
 
 function currentUserId(req: Request): string {
-  const userId = (req as any).userId;
+  const userId = req.userId;
   if (!userId) {
     throw new AppError(401, "UNAUTHORIZED", "Authentication required");
   }
@@ -34,6 +37,7 @@ export class DepositController {
   }
 
   @Post('webhook')
+  @Public()
   @UseGuards(WebhookVerificationGuard)
   @WebhookProvider('deposit')
   async anchorWebhook(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
@@ -61,9 +65,14 @@ export class DepositController {
   }
 
   @Post('interactive')
-  async interactiveDeposit(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
+  async interactiveDeposit(
+    @Req() req: Request,
+    @Body(new ZodValidationPipe(createDepositSchema)) input: CreateDepositRequest,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ) {
     try {
-      const { assetCode, idempotencyKey } = createDepositSchema.parse(body ?? {});
+      const { assetCode, idempotencyKey } = input;
       const deposit = await depositService.initiateDeposit(
         currentUserId(req),
         assetCode,

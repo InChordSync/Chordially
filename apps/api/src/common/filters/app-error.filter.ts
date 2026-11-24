@@ -14,7 +14,11 @@ export class AppErrorFilter implements ExceptionFilter {
 
     const response = host.switchToHttp().getResponse<Response>();
     response.status(error.statusCode).json({
-      error: { code: error.code, message: error.message },
+      error: {
+        code: error.code,
+        message: error.message,
+        ...(error.details ? { details: error.details } : {}),
+      },
     });
   }
 }

@@ -26,8 +26,8 @@ export interface UpdateCreatorInput {
   displayName?: string
   bio?: string | null
   avatarUrl?: string | null
-  genre?: string
-  location?: string
+  genre?: string | null
+  location?: string | null
 }
 
 export interface CreatorResponse extends CreatorProfileResponse {

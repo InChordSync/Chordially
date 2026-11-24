@@ -2,11 +2,10 @@ import { Controller, Get, Patch, Param, Req, Res, Next, UseGuards } from '@nestj
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from "../../../shared/database/prisma.js";
 import { AppError } from "../../../shared/errors/app-error.js";
-import { JwtAuthGuard } from "../../../shared/guards/jwt-auth.guard.js";
 import { Roles, RolesGuard } from "../../../shared/guards/roles.guard.js";
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 @Roles('admin')
 export class AdminController {
   @Get('audit-log')

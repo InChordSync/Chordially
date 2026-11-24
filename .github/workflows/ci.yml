@@ -14,6 +14,8 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: API typecheck
+        run: pnpm --filter @chordially/api exec tsc --noEmit -p tsconfig.json
       - name: API tests
         run: pnpm --filter @chordially/api test
       - name: OpenAPI spec is current
