@@ -53,6 +53,28 @@ export interface PaginationParams {
   pageSize: number
 }
 
+export type CreatorPayoutEligibilityReasonCode =
+  | 'CREATOR_PROFILE_NOT_FOUND'
+  | 'CREATOR_NOT_VERIFIED'
+  | 'EMAIL_NOT_VERIFIED'
+  | 'PAYOUT_BELOW_MINIMUM'
+  | 'WALLET_NOT_FOUND'
+  | 'WALLET_NOT_CUSTODIAL'
+  | 'BALANCE_UNAVAILABLE'
+  | 'INSUFFICIENT_BALANCE'
+
+export interface CreatorPayoutEligibilityReason {
+  code: CreatorPayoutEligibilityReasonCode
+  message: string
+}
+
+export interface CreatorPayoutEligibilityResult {
+  eligible: boolean
+  reasons: CreatorPayoutEligibilityReason[]
+  minimumAmount: number
+  balance: string | null
+}
+
 export function toCreatorPayoutResponse(payout: CreatorPayout): CreatorPayoutResponse {
   return {
     id: payout.id,

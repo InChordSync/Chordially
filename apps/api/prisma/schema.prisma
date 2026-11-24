@@ -60,6 +60,7 @@ model User {
   id                   String                  @id @default(cuid())
   email                String                  @unique
   passwordHash         String
+  role                 String                  @default("user")
   emailVerified        Boolean                 @default(false)
   failedLoginAttempts  Int                     @default(0)
   lockedUntil          DateTime?
@@ -71,6 +72,7 @@ model User {
   tipsSent             Tip[]
   walletDeposits       WalletDeposit[]
   refreshTokens        RefreshToken[]
+  notifications        Notification[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens  PasswordResetToken[]
 }
@@ -363,6 +365,34 @@ model RefreshToken {
   @@index([userId])
 }
 
+// Single-use, hashed email verification token. Only the sha256 hash is
+// stored, so a database leak cannot be used to verify an account.
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Single-use, hashed password reset token. Revoking outstanding rows after
+// a reset also invalidates any previously issued reset link.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
 // A fan's saved reference to a creator — the backend behind mobile/web
 // "saved creators" lists. A fan can bookmark each creator at most once.
 model Bookmark {
@@ -375,4 +405,33 @@ model Bookmark {
 
   @@unique([fanId, creatorId])
   @@index([fanId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+model User {
+  // ...existing fields
+  role      String   @default("user")
+  // ...existing relations
 }

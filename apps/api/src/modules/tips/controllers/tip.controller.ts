@@ -1,18 +1,36 @@
-import { Controller, Post, Get, Put, Param, Body, Req, Res, Next } from '@nestjs/common';
-import type { Request, Response, NextFunction } from 'express';
-import { requestUserId } from "../../../shared/middleware/request-user-id.js";
-import { tipService } from "../services/tip.service.js";
-import { toTipResponse } from "../types/tip.types.js";
 
-@Controller('tips')
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+} from "@nestjs/common";
+
+import type { Request } from "express";
+
+import { tipService } from "../services/tip.service.js";
+import { createTipSchema, type CreateTipRequest } from "../validators/tip.validators.js";
+import { ZodValidationPipe } from "../../../shared/pipes/zod-validation.pipe.js";
+
+interface AuthenticatedRequest extends Request {
+  userId: string;
+}
+
+@Controller("tips")
 export class TipController {
+  constructor() {}
+
   @Post()
-  async sendTip(@Req() req: Request, @Body() body: any, @Res() res: Response, @Next() next: NextFunction) {
-    try {
-      const fanUserId = requestUserId(req);
-      const { creatorId, streamId, amount, token } = body;
-      const tip = await tipService.sendTip(fanUserId, creatorId, amount, token, streamId);
-      return res.status(201).json(toTipResponse(tip));
-    } catch (error) { next(error); }
+  @HttpCode(HttpStatus.CREATED)
+  async sendTip(
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(createTipSchema)) input: CreateTipRequest,
+  ) {
+    return tipService.submitTip({
+      ...input,
+      fanUserId: req.userId,
+    });
   }
 }

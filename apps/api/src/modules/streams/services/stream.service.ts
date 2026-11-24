@@ -19,6 +19,15 @@ export const streamService = {
       )
     }
 
+    const openStream = await streamRepository.findOpenByCreator(creator.id)
+    if (openStream) {
+      throw new AppError(
+        409,
+        "STREAM_ALREADY_LIVE",
+        "This creator already has a live stream"
+      )
+    }
+
     return streamRepository.create({ creatorId: creator.id, title })
   },
 

@@ -91,7 +91,7 @@ Chordially is built with a modern full-stack TypeScript setup.
 | ------------------ | -------------------------------------- |
 | Web App            | React / Next.js                        |
 | Mobile App         | React Native / Expo                    |
-| Backend API        | Express.js                             |
+| Backend API        | NestJS / Express adapter               |
 | Blockchain Service | Stellar                                |
 | Language           | TypeScript                             |
 | Package Manager    | pnpm                                   |
@@ -105,7 +105,7 @@ Chordially is built with a modern full-stack TypeScript setup.
 ```txt
 chordially/
 ├── apps/
-│   ├── api/        # @chordially/api    – Express modular monolith (auth)
+│   ├── api/        # @chordially/api    – NestJS modular monolith
 │   ├── web/        # @chordially/web    – Next.js web app (login/register)
 │   └── mobile/     # @chordially/mobile – React Native / Expo foundation
 │
@@ -127,8 +127,9 @@ these pieces fit together.
 
 ### `apps/api`
 
-The API app is the main backend service for Chordially, built as an Express
+The API app is the main backend service for Chordially, built as a NestJS
 **modular monolith** (see [docs/architecture.md](./docs/architecture.md)).
+`apps/api/src/main.ts` is its single development and production entrypoint.
 
 **Currently implemented:**
 
@@ -137,8 +138,8 @@ The API app is the main backend service for Chordially, built as an Express
 - `modules/users` — owns the `User` persistence layer used by `modules/auth`.
 - `modules/creators` — creator profile persistence and routes.
 - `modules/fans` — fan profile persistence, consumed by `modules/users`.
-- `shared/middleware/auth.middleware.ts` — JWT bearer verification
-  (`requireAuth`), used by authenticated routes.
+- `shared/guards/jwt-auth.guard.ts` — global JWT authentication, with
+  `@Public()` for registration/login, health, and creator slug lookup.
 - `modules/dev` — a local mock API server toggle (`POST/GET /api/dev/mock/*`),
   mounted **only** when `NODE_ENV=development`, for local UI development
   without a live backend.

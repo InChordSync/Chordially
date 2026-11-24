@@ -7,7 +7,7 @@ Chordially is a pnpm + Turborepo workspace.
 ```txt
 chordially/
 ├── apps/
-│   ├── api/      @chordially/api    – Express modular monolith
+│   ├── api/      @chordially/api    – NestJS modular monolith
 │   ├── web/      @chordially/web    – Next.js web app
 │   └── mobile/   @chordially/mobile – React Native / Expo app
 │
@@ -24,9 +24,10 @@ step required) by both `apps/api` and `apps/web` via workspace dependencies.
 
 ## Backend: modular monolith
 
-`apps/api` is an Express app organized as a **modular monolith**. Each domain
-lives in its own module under `src/modules/<domain>/`, with a consistent
-internal structure:
+`apps/api` is a NestJS app organized as a **modular monolith**. The production
+and development entrypoint is `src/main.ts`; `src/app.ts` supplies the Express
+adapter's JSON and raw-body parsers for Nest. Each domain lives in its own
+module under `src/modules/<domain>/`, with a consistent internal structure:
 
 ```txt
 src/modules/<domain>/
@@ -34,7 +35,7 @@ src/modules/<domain>/
 ├── services/       – business logic
 ├── repositories/    – persistence (Prisma) – only where the module owns data
 ├── validators/      – request validation (zod schemas)
-├── routes/           – Express routers
+├── routes/           – legacy Express routers (where still used)
 ├── types/            – module-local types and DTOs
 └── tests/            – module tests (vitest + supertest)
 ```
@@ -46,10 +47,16 @@ src/shared/
 ├── config/      – environment loading and validation (zod)
 ├── database/     – Prisma client singleton
 ├── errors/        – AppError and other error types
+├── guards/         – global JWT auth plus role/webhook authorization
 ├── logger/         – application logger
 ├── middleware/      – Express middleware (auth, error handling)
+├── pipes/            – request validation and transformation
 └── types/            – global type augmentations (e.g. Express Request)
 ```
+
+Nest routes require a valid JWT by default. `@Public()` is reserved for
+registration/login, health checks, creator slug lookup, and webhook handlers
+that also use their dedicated signature-verification guard.
 
 ### Current modules
 
@@ -84,7 +91,8 @@ src/shared/
    used by the frontend).
 3. Implement business logic in `services/`, calling into other modules'
    services (not their repositories) for cross-module data access.
-4. Wire up `routes/` and mount the router in `src/app.ts`.
+4. Register the controller and provider in the Nest module, then import that
+   module in `src/app.module.ts`.
 5. Add tests under `tests/` following the existing auth module tests as a
    template.
 
@@ -272,7 +280,8 @@ indication of whether the money actually moved.
 ### Reconciliation worker
 
 `modules/reconciliation/services/reconciliation.service.ts` runs on an
-interval (`RECONCILIATION_INTERVAL_MS`, started from `server.ts`, or
+interval (`RECONCILIATION_INTERVAL_MS`, started from the Nest application in
+`main.ts`, or
 triggered manually via `POST /api/reconciliation/run`):
 
 1. Finds tips stuck in `submitted` for longer than

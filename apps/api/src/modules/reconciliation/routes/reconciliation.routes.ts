@@ -5,7 +5,7 @@ import { reconciliationRunRateLimit } from "../middleware/reconciliation-rate-li
 
 export const reconciliationRouter: Router = Router()
 
-// Manual trigger, mainly for demos/ops; the scheduled loop in server.ts
+// Manual trigger, mainly for demos/ops; the scheduled loop starts with Nest.
 // calls reconciliationService.run() on the same interval automatically.
 // Operator-only (admin) by design, and rate-limited per admin so a stray
 // script can't hammer actual reconciliation batches.

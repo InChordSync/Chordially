@@ -6,6 +6,6 @@ export const createDepositSchema = z.object({
     .string()
     .uuid("idempotencyKey must be a valid UUID")
     .optional(),
-})
+}).default({})
 
 export type CreateDepositRequest = z.infer<typeof createDepositSchema>

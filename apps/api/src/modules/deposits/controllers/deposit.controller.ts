@@ -1,34 +1,84 @@
-import { Controller, Get, Post, Req, Res, Next } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, Req, Res, Next, UseGuards } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
+import { depositService } from "../../wallet/services/deposit.service.js";
+import { createDepositSchema } from "../../wallet/validators/deposit.validators.js";
+import { AppError } from "../../../shared/errors/app-error.js";
+import { WebhookProvider, WebhookVerificationGuard } from "../../../shared/guards/webhook-verification.guard.js";
+import { Public } from "../../../shared/decorators/public.decorator.js";
+import { ZodValidationPipe } from "../../../shared/pipes/zod-validation.pipe.js";
+import type { CreateDepositRequest } from "../../wallet/validators/deposit.validators.js";
+
+function currentUserId(req: Request): string {
+  const userId = req.userId;
+  if (!userId) {
+    throw new AppError(401, "UNAUTHORIZED", "Authentication required");
+  }
+  return userId;
+}
 
 @Controller('deposits')
 export class DepositController {
   @Get()
-  async getDeposits(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
+  async getDeposits(
+    @Query('page') page: string | undefined,
+    @Query('pageSize') pageSize: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+    @Next() next: NextFunction
+  ) {
     try {
-      return res.status(200).json({ deposits: [] });
+      const deposits = await depositService.listDepositsForUser(
+        currentUserId(req),
+        page === undefined ? 1 : Number(page),
+        pageSize === undefined ? 20 : Number(pageSize)
+      );
+      return res.status(200).json(deposits);
     } catch (error) { next(error); }
   }
 
   @Post('webhook')
+  @Public()
+  @UseGuards(WebhookVerificationGuard)
+  @WebhookProvider('deposit')
   async anchorWebhook(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     try {
       return res.status(200).json({ ok: true });
     } catch (error) { next(error); }
   }
 
-  @Get('status-poll')
-  async pollStatus(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
+  @Get(['status-poll', 'status-poll/:depositId'])
+  async pollStatus(
+    @Param('depositId') depositIdParam: string | undefined,
+    @Query('depositId') depositIdQuery: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+    @Next() next: NextFunction
+  ) {
     try {
-      return res.status(200).json({ status: "completed" });
+      const depositId = depositIdParam ?? depositIdQuery;
+      if (!depositId) {
+        throw new AppError(400, "VALIDATION_ERROR", "depositId is required");
+      }
+      const deposit = await depositService.refreshDepositStatus(currentUserId(req), depositId);
+      return res.status(200).json(deposit);
     } catch (error) { next(error); }
   }
 
   @Post('interactive')
-  async interactiveDeposit(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
+  async interactiveDeposit(
+    @Req() req: Request,
+    @Body(new ZodValidationPipe(createDepositSchema)) input: CreateDepositRequest,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ) {
     try {
-      // N-065
-      return res.status(200).json({ url: "https://anchor.com/deposit" });
+      const { assetCode, idempotencyKey } = input;
+      const deposit = await depositService.initiateDeposit(
+        currentUserId(req),
+        assetCode,
+        idempotencyKey
+      );
+      return res.status(201).json(deposit);
     } catch (error) { next(error); }
   }
 }
