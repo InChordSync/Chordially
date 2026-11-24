@@ -87,7 +87,7 @@ describe("POST /api/users/me/avatar-upload-url", () => {
 
     expect(res.status).toBe(200)
     expect(typeof res.body.uploadUrl).toBe("string")
-    expect(res.body.avatarUrl).toContain(`avatars/${userId}.jpeg`)
+    expect(res.body.avatarUrl).toMatch(new RegExp(`avatars/${userId}/[^/]+\\.jpeg$`))
   })
 
   it("returns a presigned uploadUrl and the final avatarUrl for png", async () => {
@@ -99,7 +99,26 @@ describe("POST /api/users/me/avatar-upload-url", () => {
       .send({ contentType: "image/png" })
 
     expect(res.status).toBe(200)
-    expect(res.body.avatarUrl).toContain(`avatars/${userId}.png`)
+    expect(res.body.avatarUrl).toMatch(new RegExp(`avatars/${userId}/[^/]+\\.png$`))
+  })
+
+  it("issues a different object key for every upload", async () => {
+    const { token, userId } = await registerAndLogin("avatar-unique@test.com")
+
+    const first = await request(app)
+      .post("/api/users/me/avatar-upload-url")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ contentType: "image/png" })
+    const second = await request(app)
+      .post("/api/users/me/avatar-upload-url")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ contentType: "image/png" })
+
+    expect(first.status).toBe(200)
+    expect(second.status).toBe(200)
+    expect(first.body.avatarUrl).not.toBe(second.body.avatarUrl)
+    expect(first.body.avatarUrl).toMatch(new RegExp(`avatars/${userId}/[^/]+\\.png$`))
+    expect(second.body.avatarUrl).toMatch(new RegExp(`avatars/${userId}/[^/]+\\.png$`))
   })
 })
 
@@ -110,16 +129,17 @@ describe("PATCH /api/users/me — post-upload avatar verification", () => {
       data: { userId, displayName: "Avatar Creator", slug: "avatar-creator" },
     })
 
+    const key = `avatars/${userId}/first-upload.png`
     const res = await request(app)
       .patch("/api/users/me")
       .set("Authorization", `Bearer ${token}`)
-      .send({ avatarUrl: `https://s3.example.com/avatars/${userId}.png` })
+      .send({ avatarUrl: `https://s3.example.com/${key}` })
 
     expect(res.status).toBe(200)
-    expect(vi.mocked(getAvatarObject)).toHaveBeenCalledWith(`avatars/${userId}.png`)
+    expect(vi.mocked(getAvatarObject)).toHaveBeenCalledWith(key)
 
     const stored = await prisma.creatorProfile.findUniqueOrThrow({ where: { userId } })
-    expect(stored.avatarUrl).toBe(`https://s3.example.com/avatars/${userId}.png`)
+    expect(stored.avatarUrl).toBe(`https://s3.example.com/${key}`)
   })
 
   it("rejects an avatar whose uploaded bytes fail moderation", async () => {
@@ -130,7 +150,7 @@ describe("PATCH /api/users/me — post-upload avatar verification", () => {
 
     // A PNG-declared object whose body is not a PNG should be rejected.
     vi.mocked(getAvatarObject).mockResolvedValueOnce({
-      key: `avatars/${userId}.png`,
+      key: `avatars/${userId}/rejected.png`,
       contentType: "image/png",
       contentLength: 16,
       body: Buffer.from("not-an-image at all"),
@@ -139,7 +159,7 @@ describe("PATCH /api/users/me — post-upload avatar verification", () => {
     const res = await request(app)
       .patch("/api/users/me")
       .set("Authorization", `Bearer ${token}`)
-      .send({ avatarUrl: `https://s3.example.com/avatars/${userId}.png` })
+      .send({ avatarUrl: `https://s3.example.com/avatars/${userId}/rejected.png` })
 
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe("AVATAR_REJECTED")

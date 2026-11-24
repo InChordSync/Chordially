@@ -1,3 +1,4 @@
+import type { WalletDepositStatus } from "@prisma/client"
 import type { Sep24TransactionStatus } from "../../../shared/anchor/sep24-client.js"
 
 export interface WalletDeposit {
@@ -6,7 +7,7 @@ export interface WalletDeposit {
   assetCode: string
   anchorTransactionId: string
   interactiveUrl: string
-  status: string
+  status: WalletDepositStatus
   amountIn: string | null
   failureReason: string | null
   createdAt: Date
@@ -44,6 +45,7 @@ export function toWalletDepositResponse(deposit: WalletDeposit): WalletDepositRe
     id: deposit.id,
     assetCode: deposit.assetCode,
     interactiveUrl: deposit.interactiveUrl,
+    // Prisma's WalletDepositStatus mirrors SEP-24's vocabulary exactly.
     status: deposit.status as Sep24TransactionStatus,
     amountIn: deposit.amountIn,
     failureReason: deposit.failureReason,

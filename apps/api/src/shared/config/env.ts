@@ -1,6 +1,12 @@
 import { z } from "zod"
 
-const envSchema = z.object({
+// z.coerce.boolean() turns every non-empty string (including "false") into
+// `true`. Parse the documented spellings explicitly instead.
+const envBoolean = z
+  .enum(["true", "false", "1", "0", "yes", "no", "on", "off"])
+  .transform((value) => ["true", "1", "yes", "on"].includes(value.toLowerCase()))
+
+export const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -11,6 +17,8 @@ const envSchema = z.object({
     .enum(["debug", "info", "warn", "error"])
     .default("info"),
   PORT: z.coerce.number().int().positive().default(4000),
+  CORS_ALLOWED_ORIGINS: z.string().default(""),
+  SHUTDOWN_DRAIN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   JWT_EXPIRES_IN: z.string().default("1h"),
@@ -23,6 +31,19 @@ const envSchema = z.object({
   EMAIL_VERIFICATION_TTL_SECONDS: z.coerce.number().int().positive().default(24 * 60 * 60),
   // How long a one-time password reset token stays valid (seconds).
   PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  REGISTER_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  REGISTER_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  LOGIN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  LOGIN_RATE_LIMIT_PER_ACCOUNT: z.coerce.number().int().positive().default(5),
+  LOGIN_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(20),
+  API_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  API_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  WALLET_LINK_CHALLENGE_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  WALLET_LINK_CHALLENGE_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  CREATOR_PAYOUT_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  CREATOR_PAYOUT_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   // Brute-force protection for login: after this many failed attempts an
   // account is temporarily locked for the configured duration (seconds).
   LOGIN_MAX_FAILED_ATTEMPTS: z.coerce.number().int().positive().default(5),
@@ -68,7 +89,7 @@ const envSchema = z.object({
   // profile endpoint, to curb unauthenticated scraping/enumeration.
   CREATOR_PROFILE_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   CREATOR_PROFILE_RATE_LIMIT_PER_IP: z.coerce.number().int().positive().default(120),
-  RECONCILIATION_ENABLED: z.coerce.boolean().default(true),
+  RECONCILIATION_ENABLED: envBoolean.default("true"),
   RECONCILIATION_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   // Per-admin cap on manual `POST /api/reconciliation/run` triggers.
   RECONCILIATION_RUN_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
@@ -83,17 +104,59 @@ const envSchema = z.object({
   // redis://host:6379). When unset, the probe treats the app as having no
   // external cache dependency and reports the cache subsystem healthy.
   CACHE_URL: z.string().optional(),
-  // Live tip-feed events are delivered by an in-process bus by default. A
-  // multi-instance deployment must set "redis" plus REDIS_URL so a tip
-  // confirmed on one API instance reaches viewers connected to another.
-  TIP_EVENT_BUS: z.enum(["memory", "redis"]).default("memory"),
-  REDIS_URL: z.string().optional(),
+  // Shared secrets used to authenticate anchor/payout webhooks. Empty in
+  // development; production startup fails unless both are configured.
+  DEPOSIT_WEBHOOK_SECRET: z.string().default(""),
+  CREATOR_PAYOUT_WEBHOOK_SECRET: z.string().default(""),
+  WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS: z.coerce.number().int().positive().default(300),
+  // Operator documentation/Swagger UI. Disabled automatically in production
+  // even when DOCS_ENABLED=true, and optionally protected with basic auth.
+  DOCS_ENABLED: envBoolean.default("true"),
+  DOCS_BASIC_AUTH_USER: z.string().optional(),
+  DOCS_BASIC_AUTH_PASSWORD: z.string().optional(),
+  // Token required to scrape GET /api/metrics. Unset disables the route.
+  METRICS_SCRAPE_TOKEN: z.string().optional(),
+  HEALTH_HEAP_LIMIT_MB: z.coerce.number().int().positive().default(150),
+  HEALTH_PROBE_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
 }).superRefine((value, ctx) => {
-  if (value.TIP_EVENT_BUS === "redis" && !value.REDIS_URL) {
+  if (value.NODE_ENV !== "production") return
+
+  if (value.JWT_SECRET.length < 32) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["REDIS_URL"],
-      message: "REDIS_URL is required when TIP_EVENT_BUS=redis",
+      path: ["JWT_SECRET"],
+      message: "JWT_SECRET must be at least 32 characters in production",
+    })
+  }
+
+  for (const key of [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_S3_BUCKET",
+    "AWS_KMS_KEY_ID",
+  ] as const) {
+    if (!value[key].trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [key],
+        message: `${key} is required in production`,
+      })
+    }
+  }
+
+  if (!value.DEPOSIT_WEBHOOK_SECRET.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["DEPOSIT_WEBHOOK_SECRET"],
+      message: "DEPOSIT_WEBHOOK_SECRET is required in production",
+    })
+  }
+
+  if (!value.CREATOR_PAYOUT_WEBHOOK_SECRET.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["CREATOR_PAYOUT_WEBHOOK_SECRET"],
+      message: "CREATOR_PAYOUT_WEBHOOK_SECRET is required in production",
     })
   }
 })

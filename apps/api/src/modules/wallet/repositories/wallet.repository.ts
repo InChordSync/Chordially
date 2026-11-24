@@ -1,3 +1,4 @@
+import { WalletType } from "@prisma/client"
 import { prisma } from "../../../shared/database/prisma.js"
 import type {
   CreateCustodialWalletInput,
@@ -15,11 +16,11 @@ export const walletRepository = {
   },
 
   create(input: CreateCustodialWalletInput): Promise<Wallet> {
-    return prisma.wallet.create({ data: { ...input, walletType: "custodial" } })
+    return prisma.wallet.create({ data: { ...input, walletType: WalletType.custodial } })
   },
 
   createLinked(input: CreateLinkedWalletInput): Promise<Wallet> {
-    return prisma.wallet.create({ data: { ...input, walletType: "linked" } })
+    return prisma.wallet.create({ data: { ...input, walletType: WalletType.linked } })
   },
 
   markUsdcTrustlineEstablished(userId: string): Promise<Wallet> {

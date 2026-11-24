@@ -1,12 +1,13 @@
 import type { NextFunction, Request, Response } from "express"
 import { AppError } from "../../../shared/errors/app-error.js"
+import { requestUserId } from "../../../shared/middleware/request-user-id.js"
 import { streamPayoutConfigService } from "../services/stream-payout-config.service.js"
 import { toStreamPayoutConfigResponse, type PayoutPayeeInput } from "../types/payout-config.types.js"
 
 export const streamPayoutConfigController = {
   async set(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const hostUserId = req.userId!
+      const hostUserId = requestUserId(req)
       const { id: streamId } = req.params
       const { payees } = req.body as { payees?: unknown }
 

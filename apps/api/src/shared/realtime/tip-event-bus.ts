@@ -27,7 +27,20 @@ export function createTipEventBus(): TipEventBus {
     return new RedisTipEventBus(new Redis(env.REDIS_URL))
   }
 
-  return new InMemoryTipEventBus()
+    emitter.emit(channel(event.streamId), fullEvent)
+
+    return fullEvent
+  },
+
+  subscribe(streamId: string, listener: (event: TipFeedEvent) => void): () => void {
+    const eventName = channel(streamId)
+    emitter.on(eventName, listener)
+    return () => emitter.off(eventName, listener)
+  },
+
+  close(): void {
+    emitter.removeAllListeners()
+  },
 }
 
 /** Stable singleton so existing publishers/subscribers need no changes. */

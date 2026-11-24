@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "../../../shared/database/prisma.js"
 import type {
   CreateCreatorInput,
@@ -5,17 +6,22 @@ import type {
   UpdateCreatorInput,
 } from "../types/creator.types.js"
 
+type DbClient = Prisma.TransactionClient
+
 export const creatorRepository = {
-  findById(id: string): Promise<CreatorProfile | null> {
-    return prisma.creatorProfile.findUnique({ where: { id } })
+  findById(id: string, tx?: DbClient): Promise<CreatorProfile | null> {
+    const client = tx ?? prisma
+    return client.creatorProfile.findUnique({ where: { id } })
   },
 
-  findBySlug(slug: string): Promise<CreatorProfile | null> {
-    return prisma.creatorProfile.findUnique({ where: { slug } })
+  findBySlug(slug: string, tx?: DbClient): Promise<CreatorProfile | null> {
+    const client = tx ?? prisma
+    return client.creatorProfile.findUnique({ where: { slug } })
   },
 
-  findByUserId(userId: string): Promise<CreatorProfile | null> {
-    return prisma.creatorProfile.findUnique({ where: { userId } })
+  findByUserId(userId: string, tx?: DbClient): Promise<CreatorProfile | null> {
+    const client = tx ?? prisma
+    return client.creatorProfile.findUnique({ where: { userId } })
   },
 
   search(filters: { q?: string; genre?: string; location?: string }): Promise<CreatorProfile[]> {
@@ -41,8 +47,9 @@ export const creatorRepository = {
     })
   },
 
-  update(id: string, input: UpdateCreatorInput): Promise<CreatorProfile> {
-    return prisma.creatorProfile.update({
+  update(id: string, input: UpdateCreatorInput, tx?: DbClient): Promise<CreatorProfile> {
+    const client = tx ?? prisma
+    return client.creatorProfile.update({
       where: { id },
       data: input,
     })

@@ -1,4 +1,7 @@
-export type CreatorPayoutStatus = "awaiting_anchor_details" | "submitted" | "completed" | "failed"
+import type { CreatorPayoutStatus as PrismaCreatorPayoutStatus } from "@prisma/client"
+
+// Declaration lives in schema.prisma; this alias keeps the public type name.
+export type CreatorPayoutStatus = PrismaCreatorPayoutStatus
 
 export interface CreatorPayout {
   id: string
@@ -6,7 +9,7 @@ export interface CreatorPayout {
   creatorId: string
   assetCode: string
   amount: string
-  status: string
+  status: CreatorPayoutStatus
   anchorTransactionId: string
   interactiveUrl: string
   txHash: string | null
@@ -50,12 +53,34 @@ export interface PaginationParams {
   pageSize: number
 }
 
+export type CreatorPayoutEligibilityReasonCode =
+  | 'CREATOR_PROFILE_NOT_FOUND'
+  | 'CREATOR_NOT_VERIFIED'
+  | 'EMAIL_NOT_VERIFIED'
+  | 'PAYOUT_BELOW_MINIMUM'
+  | 'WALLET_NOT_FOUND'
+  | 'WALLET_NOT_CUSTODIAL'
+  | 'BALANCE_UNAVAILABLE'
+  | 'INSUFFICIENT_BALANCE'
+
+export interface CreatorPayoutEligibilityReason {
+  code: CreatorPayoutEligibilityReasonCode
+  message: string
+}
+
+export interface CreatorPayoutEligibilityResult {
+  eligible: boolean
+  reasons: CreatorPayoutEligibilityReason[]
+  minimumAmount: number
+  balance: string | null
+}
+
 export function toCreatorPayoutResponse(payout: CreatorPayout): CreatorPayoutResponse {
   return {
     id: payout.id,
     assetCode: payout.assetCode,
     amount: payout.amount,
-    status: payout.status as CreatorPayoutStatus,
+    status: payout.status,
     interactiveUrl: payout.interactiveUrl,
     txHash: payout.txHash,
     failureReason: payout.failureReason,

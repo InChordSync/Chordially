@@ -321,4 +321,15 @@ describe("createTipEventBus", () => {
       env.REDIS_URL = originalUrl
     }
   })
+
+  it("drops all subscribers when closed on shutdown", () => {
+    const streamId = crypto.randomUUID()
+    const listener = vi.fn()
+    tipEventBus.subscribe(streamId, listener)
+
+    tipEventBus.close()
+    tipEventBus.publish(baseEvent(streamId))
+
+    expect(listener).not.toHaveBeenCalled()
+  })
 })
