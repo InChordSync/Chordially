@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client"
+import { TipPayoutStatus, type Prisma } from "@prisma/client"
 import { prisma } from "../../../shared/database/prisma.js"
 import type { CreateTipPayoutInput, TipPayout } from "../types/tip-payout.types.js"
 
@@ -23,28 +23,28 @@ export const tipPayoutRepository = {
             creatorId: input.creatorId,
             percentage: input.percentage,
             amount: input.amount,
-            status: "pending",
+            status: TipPayoutStatus.pending,
           },
         })
       )
     )
   },
 
-  updateStatusForTip(tipId: string, status: string): Promise<Prisma.BatchPayload> {
+  updateStatusForTip(tipId: string, status: TipPayoutStatus): Promise<Prisma.BatchPayload> {
     return prisma.tipPayout.updateMany({ where: { tipId }, data: { status } })
   },
 
   markConfirmedForTip(tipId: string, txHash: string): Promise<Prisma.BatchPayload> {
     return prisma.tipPayout.updateMany({
       where: { tipId },
-      data: { status: "confirmed", txHash },
+      data: { status: TipPayoutStatus.confirmed, txHash },
     })
   },
 
   markFailedForTip(tipId: string, failureReason: string): Promise<Prisma.BatchPayload> {
     return prisma.tipPayout.updateMany({
       where: { tipId },
-      data: { status: "failed", failureReason },
+      data: { status: TipPayoutStatus.failed, failureReason },
     })
   },
 }

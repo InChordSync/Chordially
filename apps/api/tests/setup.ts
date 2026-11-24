@@ -104,8 +104,33 @@ vi.mock("../src/shared/anchor/client.js", () => ({
   },
 }))
 
-beforeEach(async () => {
+/**
+ * Financial rows are Restrict-related to their users, so a test database
+ * reset has to delete dependents before the users they reference. The order
+ * below mirrors the foreign keys in schema.prisma.
+ */
+async function resetDatabase(): Promise<void> {
+  await prisma.tipPayout.deleteMany()
+  await prisma.tip.deleteMany()
+  await prisma.streamPayoutConfigPayee.deleteMany()
+  await prisma.streamPayoutConfig.deleteMany()
+  await prisma.stream.deleteMany()
+  await prisma.creatorPayout.deleteMany()
+  await prisma.walletDeposit.deleteMany()
+  await prisma.notification.deleteMany()
+  await prisma.bookmark.deleteMany()
+  await prisma.refreshToken.deleteMany()
+  await prisma.emailVerificationToken.deleteMany()
+  await prisma.passwordResetToken.deleteMany()
+  await prisma.fanProfile.deleteMany()
+  await prisma.creatorProfile.deleteMany()
+  await prisma.wallet.deleteMany()
+  await prisma.transactionIdempotencyRecord.deleteMany()
   await prisma.user.deleteMany()
+}
+
+beforeEach(async () => {
+  await resetDatabase()
 })
 
 afterAll(async () => {

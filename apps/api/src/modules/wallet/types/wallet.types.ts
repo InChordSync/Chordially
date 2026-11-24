@@ -1,10 +1,13 @@
-export type WalletType = "custodial" | "linked"
+import type { WalletType as PrismaWalletType } from "@prisma/client"
+
+// Declaration lives in schema.prisma.
+export type WalletType = PrismaWalletType
 
 export interface Wallet {
   id: string
   userId: string
   publicKey: string
-  walletType: string
+  walletType: WalletType
   /** Null for a linked wallet — the platform never holds its secret key. */
   encryptedSecret: string | null
   encryptedDataKey: string | null

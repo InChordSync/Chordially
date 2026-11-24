@@ -1,4 +1,4 @@
-import type { TipStatus } from "./tip.types.js"
+import type { TipPayoutStatus } from "@prisma/client"
 
 export interface TipPayout {
   id: string
@@ -6,7 +6,7 @@ export interface TipPayout {
   creatorId: string
   percentage: number
   amount: string
-  status: string
+  status: TipPayoutStatus
   txHash: string | null
   failureReason: string | null
   createdAt: Date
@@ -24,7 +24,7 @@ export interface TipPayoutResponse {
   creatorId: string
   percentage: number
   amount: string
-  status: TipStatus
+  status: TipPayoutStatus
   txHash: string | null
   failureReason: string | null
 }
@@ -34,7 +34,7 @@ export function toTipPayoutResponse(payout: TipPayout): TipPayoutResponse {
     creatorId: payout.creatorId,
     percentage: payout.percentage,
     amount: payout.amount,
-    status: payout.status as TipStatus,
+    status: payout.status,
     txHash: payout.txHash,
     failureReason: payout.failureReason,
   }

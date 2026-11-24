@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { AppError } from "../../../shared/errors/app-error.js"
 import { fanRepository } from "../repositories/fan.repository.js"
 import type {
@@ -6,13 +7,15 @@ import type {
   UpdateFanProfileInput,
 } from "../types/fan.types.js"
 
+type DbClient = Prisma.TransactionClient
+
 export const fanService = {
-  findByUserId(userId: string): Promise<FanProfile | null> {
-    return fanRepository.findByUserId(userId)
+  findByUserId(userId: string, tx?: DbClient): Promise<FanProfile | null> {
+    return fanRepository.findByUserId(userId, tx)
   },
 
-  findById(id: string): Promise<FanProfile | null> {
-    return fanRepository.findById(id)
+  findById(id: string, tx?: DbClient): Promise<FanProfile | null> {
+    return fanRepository.findById(id, tx)
   },
 
   async createFanProfile(input: CreateFanProfileInput): Promise<FanProfile> {
@@ -25,9 +28,10 @@ export const fanService = {
   async updateFanProfile(
     id: string,
     input: UpdateFanProfileInput,
-    requestingUserId: string
+    requestingUserId: string,
+    tx?: DbClient
   ): Promise<FanProfile> {
-    const profile = await fanRepository.findById(id)
+    const profile = await fanRepository.findById(id, tx)
     if (!profile) {
       throw new AppError(404, "FAN_NOT_FOUND", "Fan profile not found")
     }
@@ -40,15 +44,16 @@ export const fanService = {
       )
     }
 
-    return fanRepository.update(id, input)
+    return fanRepository.update(id, input, tx)
   },
 
   async updateGenrePrefs(
     id: string,
     genrePrefs: string[],
-    requestingUserId: string
+    requestingUserId: string,
+    tx?: DbClient
   ): Promise<FanProfile> {
-    const profile = await fanRepository.findById(id)
+    const profile = await fanRepository.findById(id, tx)
     if (!profile) {
       throw new AppError(404, "FAN_NOT_FOUND", "Fan profile not found")
     }
@@ -61,6 +66,6 @@ export const fanService = {
       )
     }
 
-    return fanRepository.setGenrePrefs(id, genrePrefs)
+    return fanRepository.setGenrePrefs(id, genrePrefs, tx)
   },
 }

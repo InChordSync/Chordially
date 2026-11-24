@@ -4,7 +4,7 @@ import type { CreatorProfileResponse } from "@chordially/shared"
 import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { CreatorHeader } from "../../../components/profile/creator-header"
-import { getCreatorBySlug } from "../../../lib/creator-client"
+import { getCreatorBySlug, isCreatorNotFoundError } from "../../../lib/creator-client"
 
 type LoadState =
   | { status: "loading" }
@@ -30,7 +30,12 @@ export default function CreatorProfilePage() {
       } catch (error) {
         if (!active || controller.signal.aborted) return
         if (error instanceof DOMException && error.name === "AbortError") return
-        setState({ status: "error", message: "Creator not found" })
+        setState({
+          status: "error",
+          message: isCreatorNotFoundError(error)
+            ? "Creator not found"
+            : "Could not load this creator. Please try again.",
+        })
       }
     }
 
