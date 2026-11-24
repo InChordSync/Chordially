@@ -4,10 +4,9 @@
     "outDir": "dist",
     "rootDir": "src",
     "types": ["node"],
-    // Nest resolves constructor-injected providers from design:paramtypes.
-    // esbuild/SWC do not emit those without these two options.
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
 }

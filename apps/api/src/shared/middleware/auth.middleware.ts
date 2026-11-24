@@ -65,7 +65,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
  * in mind — role is read from the DB per request, not embedded in the JWT,
  * so a role change takes effect immediately (no token reissue needed).
  */
-export async function requireRole(roles: string[]) {
+export function requireRole(roles: string[]) {
   return async function requireRoleMiddleware(
     req: Request,
     _res: Response,

@@ -1,4 +1,4 @@
-import { Prisma, type WalletDepositStatus } from "@prisma/client"
+import type { WalletDepositStatus } from "@prisma/client"
 import { prisma } from "../../../shared/database/prisma.js"
 import type { CreateWalletDepositInput, WalletDeposit } from "../types/deposit.types.js"
 
