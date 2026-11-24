@@ -1,46 +1,31 @@
-import { EventEmitter } from "node:events"
-import type { TipPayoutResponse } from "../../modules/tips/types/tip-payout.types.js"
-import type { TipStatus } from "../../modules/tips/types/tip.types.js"
+import RedisDefault from "ioredis"
+import { env } from "../config/env.js"
+import { InMemoryTipEventBus } from "./in-memory-tip-event-bus.js"
+import { RedisTipEventBus } from "./redis-tip-event-bus.js"
+import type { TipEventBus } from "./tip-event.js"
 
-export interface TipFeedEvent {
-  /** Monotonically increasing across the whole process; used as the SSE event id. */
-  seq: number
-  streamId: string
-  tipId: string
-  creatorId: string
-  fanUserId: string
-  amount: string
-  status: TipStatus
-  txHash: string | null
-  failureReason: string | null
-  emittedAt: string
-  /** Present only for split tips: each payee's share and individual status. */
-  payouts?: TipPayoutResponse[]
-}
+export type {
+  TipEventBus,
+  TipEventInput,
+  TipEventListener,
+  TipFeedEvent,
+} from "./tip-event.js"
+export { InMemoryTipEventBus } from "./in-memory-tip-event-bus.js"
+export { RedisTipEventBus } from "./redis-tip-event-bus.js"
 
-/**
- * In-process pub/sub for live tip events. This is intentionally a single
- * EventEmitter rather than an external broker: it's enough for a single API
- * instance, which matches the MVP scope here. A multi-instance deployment
- * would need to swap this for something like Redis pub/sub without changing
- * any of the calling code below.
- */
-const emitter = new EventEmitter()
-emitter.setMaxListeners(0)
+// With NodeNext, ioredis' CommonJS typings surface the default import as a
+// module namespace, while at runtime it is the Redis constructor.
+const Redis = RedisDefault as unknown as typeof import("ioredis").Redis
 
-let seqCounter = 0
-
-function channel(streamId: string): string {
-  return `tip-feed:${streamId}`
-}
-
-export const tipEventBus = {
-  publish(event: Omit<TipFeedEvent, "seq" | "emittedAt">): TipFeedEvent {
-    const fullEvent: TipFeedEvent = {
-      ...event,
-      seq: ++seqCounter,
-      emittedAt: new Date().toISOString(),
+/** Selects the bus from config; the Redis client is only created when selected. */
+export function createTipEventBus(): TipEventBus {
+  if (env.TIP_EVENT_BUS === "redis") {
+    // env.ts already enforces this; keep the guard for direct factory calls.
+    if (!env.REDIS_URL) {
+      throw new Error("REDIS_URL is required when TIP_EVENT_BUS=redis")
     }
+    return new RedisTipEventBus(new Redis(env.REDIS_URL))
+  }
 
     emitter.emit(channel(event.streamId), fullEvent)
 
@@ -57,3 +42,6 @@ export const tipEventBus = {
     emitter.removeAllListeners()
   },
 }
+
+/** Stable singleton so existing publishers/subscribers need no changes. */
+export const tipEventBus: TipEventBus = createTipEventBus()

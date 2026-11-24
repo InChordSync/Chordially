@@ -5,7 +5,8 @@
  * token (or the `chordially.token` cookie), `{ sub: userId }` payload,
  * `env.JWT_SECRET`, and the same `401 UNAUTHORIZED` error envelope on any
  * failure (missing/malformed/expired/invalid signature) — all via N-007's
- * `AppError`.
+ * `AppError`. Verification is pinned to HS256 plus the configured issuer and
+ * audience so this path and `requireAuth` accept exactly the same tokens.
  *
  * Attaches `{ userId }` to `request.user`, matching the existing
  * `req.userId` convention elsewhere in the codebase (see `requireRole`'s
@@ -53,6 +54,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ]),
       ignoreExpiration: false,
       secretOrKey: env.JWT_SECRET,
+      algorithms: ['HS256'],
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE,
     });
   }
 

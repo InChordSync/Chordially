@@ -1,8 +1,7 @@
 // NOTE: CSRF protection is verified for the header-token auth pattern since custom headers (e.g. Authorization) require pre-flight checks and cannot be sent by standard cross-site form submissions.
 // The httpOnly "chordially.token" cookie (SameSite=Strict) is also sent on authenticated requests via credentials: "include"; the custom "X-Requested-With" header forces a CORS preflight, and the SameSite=Strict cookie is never attached to cross-site requests, so cookie-authenticated endpoints stay CSRF-safe.
 import type { AuthResponse, LoginInput, RegisterInput } from "@chordially/shared"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"
+import { getApiBaseUrl } from "./api-config"
 
 export class AuthApiError extends Error {
   constructor(message: string) {
@@ -12,7 +11,7 @@ export class AuthApiError extends Error {
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: "POST",
     credentials: "include",
     headers: {

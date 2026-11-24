@@ -16,11 +16,20 @@ import type { LoginInput, RegisterInput, RegisterLinkedInput } from "../validato
 const FALLBACK_REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60
 
 function issueToken(userId: string): string {
+  // jsonwebtoken rejects iss/aud supplied in both the payload and the sign
+  // options, so put the claims here and pin them at verification time in both
+  // requireAuth and the Passport JWT strategy. A token for another
+  // issuer/audience, or signed with another algorithm, is then unusable here.
   const options: SignOptions = {
+    algorithm: "HS256",
     expiresIn: env.JWT_EXPIRES_IN as SignOptions["expiresIn"],
   }
 
-  return jwt.sign({ sub: userId }, env.JWT_SECRET, options)
+  return jwt.sign(
+    { sub: userId, iss: env.JWT_ISSUER, aud: env.JWT_AUDIENCE },
+    env.JWT_SECRET,
+    options
+  )
 }
 
 function refreshTokenLifetimeSeconds(expiresIn: string): number {

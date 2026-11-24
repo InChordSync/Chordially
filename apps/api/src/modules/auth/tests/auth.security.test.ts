@@ -1,6 +1,8 @@
+import jwt from "jsonwebtoken"
 import request from "supertest"
 import { beforeEach, describe, expect, it } from "vitest"
 import { createApp } from "../../../app.js"
+import { env } from "../../../shared/config/env.js"
 import { prisma } from "../../../shared/database/prisma.js"
 
 const app = createApp()
@@ -130,5 +132,37 @@ describe("POST /api/auth/forgot-password + reset-password", () => {
 
     expect(response.status).toBe(400)
     expect(response.body.error.code).toBe("INVALID_RESET_TOKEN")
+  })
+})
+
+describe("issued access tokens (#1355)", () => {
+  beforeEach(async () => {
+    await prisma.user.deleteMany({})
+  })
+
+  it("signs HS256 tokens with the configured issuer and audience", async () => {
+    await register("access-token@example.com")
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "access-token@example.com", password: "password1" })
+
+    expect(response.status).toBe(200)
+
+    const decoded = jwt.decode(response.body.token, { complete: true })
+    expect(decoded?.header.alg).toBe("HS256")
+    expect(decoded?.payload).toMatchObject({
+      sub: expect.any(String),
+      iss: env.JWT_ISSUER,
+      aud: env.JWT_AUDIENCE,
+    })
+
+    expect(() =>
+      jwt.verify(response.body.token, env.JWT_SECRET, {
+        algorithms: ["HS256"],
+        issuer: env.JWT_ISSUER,
+        audience: env.JWT_AUDIENCE,
+      })
+    ).not.toThrow()
   })
 })

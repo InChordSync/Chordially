@@ -23,6 +23,10 @@ export const envSchema = z.object({
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   JWT_EXPIRES_IN: z.string().default("1h"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+  // Access tokens are pinned to these iss/aud claims so a token minted for
+  // another service (or another environment) cannot be replayed here.
+  JWT_ISSUER: z.string().min(1).default("chordially-api"),
+  JWT_AUDIENCE: z.string().min(1).default("chordially-web"),
   // How long a one-time email verification token stays valid (seconds).
   EMAIL_VERIFICATION_TTL_SECONDS: z.coerce.number().int().positive().default(24 * 60 * 60),
   // How long a one-time password reset token stays valid (seconds).

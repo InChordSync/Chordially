@@ -1,9 +1,8 @@
 import type { TipSubmissionPayloadInput } from '@chordially/shared';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+import { getApiBaseUrl } from './api-config';
 
 export async function submitTipToCreator(payload: TipSubmissionPayloadInput) {
-  const response = await fetch(`${API_BASE_URL}/api/tips/submit`, {
+  const response = await fetch(`${getApiBaseUrl()}/api/tips/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

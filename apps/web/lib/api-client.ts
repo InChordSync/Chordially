@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://api.chordially.local"
+import { getApiBaseUrl } from "./api-config"
 
 const TOKEN_STORAGE_KEY = "chordially.token"
 const REFRESH_TOKEN_STORAGE_KEY = "chordially.refreshToken"
@@ -54,7 +54,7 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        const response = await fetch(`${getApiBaseUrl()}/api/auth/refresh`, {
           method: "POST",
           credentials: "include",
           headers: {
@@ -99,7 +99,7 @@ export async function apiFetch<T>(
   if (!headers.has("X-Requested-With")) headers.set("X-Requested-With", "XMLHttpRequest")
   if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`)
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...options,
     credentials: "include",
     headers,

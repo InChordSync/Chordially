@@ -19,10 +19,19 @@ function buildTestApp() {
   return app
 }
 
+/** Mirrors `authService.issueToken` so tests exercise the real token contract. */
+function accessToken(sub: string): string {
+  return jwt.sign(
+    { sub, iss: env.JWT_ISSUER, aud: env.JWT_AUDIENCE },
+    env.JWT_SECRET,
+    { algorithm: "HS256" }
+  )
+}
+
 describe("requireAuth middleware", () => {
   it("allows requests with a valid token", async () => {
     const app = buildTestApp()
-    const token = jwt.sign({ sub: "user-123" }, env.JWT_SECRET)
+    const token = accessToken("user-123")
 
     const response = await request(app)
       .get("/protected")
@@ -47,6 +56,66 @@ describe("requireAuth middleware", () => {
     const response = await request(app)
       .get("/protected")
       .set("Authorization", "Bearer not-a-real-token")
+
+    expect(response.status).toBe(401)
+    expect(response.body.error.code).toBe("UNAUTHORIZED")
+  })
+
+  it("rejects a token signed with a different algorithm", async () => {
+    const app = buildTestApp()
+    const token = jwt.sign(
+      { sub: "user-123", iss: env.JWT_ISSUER, aud: env.JWT_AUDIENCE },
+      env.JWT_SECRET,
+      { algorithm: "HS384" }
+    )
+
+    const response = await request(app)
+      .get("/protected")
+      .set("Authorization", `Bearer ${token}`)
+
+    expect(response.status).toBe(401)
+    expect(response.body.error.code).toBe("UNAUTHORIZED")
+  })
+
+  it("rejects a token with the wrong issuer", async () => {
+    const app = buildTestApp()
+    const token = jwt.sign(
+      { sub: "user-123", iss: "another-service", aud: env.JWT_AUDIENCE },
+      env.JWT_SECRET,
+      { algorithm: "HS256" }
+    )
+
+    const response = await request(app)
+      .get("/protected")
+      .set("Authorization", `Bearer ${token}`)
+
+    expect(response.status).toBe(401)
+    expect(response.body.error.code).toBe("UNAUTHORIZED")
+  })
+
+  it("rejects a token with the wrong audience", async () => {
+    const app = buildTestApp()
+    const token = jwt.sign(
+      { sub: "user-123", iss: env.JWT_ISSUER, aud: "another-client" },
+      env.JWT_SECRET,
+      { algorithm: "HS256" }
+    )
+
+    const response = await request(app)
+      .get("/protected")
+      .set("Authorization", `Bearer ${token}`)
+
+    expect(response.status).toBe(401)
+    expect(response.body.error.code).toBe("UNAUTHORIZED")
+  })
+
+  it("rejects a token without issuer and audience claims", async () => {
+    const app = buildTestApp()
+    const token = jwt.sign({ sub: "user-123" }, env.JWT_SECRET, { algorithm: "HS256" })
+
+    const response = await request(app)
+      .get("/protected")
+      .set("Authorization", `Bearer ${token}`)
 
     expect(response.status).toBe(401)
     expect(response.body.error.code).toBe("UNAUTHORIZED")
@@ -77,7 +146,7 @@ describe("requireRole middleware", () => {
     })
     app.use(errorHandler)
 
-    const token = jwt.sign({ sub: userId }, env.JWT_SECRET)
+    const token = accessToken(userId)
     const response = await request(app)
       .get("/admin")
       .set("Authorization", `Bearer ${token}`)
@@ -93,7 +162,7 @@ describe("requireRole middleware", () => {
     })
     app.use(errorHandler)
 
-    const token = jwt.sign({ sub: userId }, env.JWT_SECRET)
+    const token = accessToken(userId)
     const response = await request(app)
       .get("/admin")
       .set("Authorization", `Bearer ${token}`)
@@ -109,7 +178,7 @@ describe("requireRole middleware", () => {
     })
     app.use(errorHandler)
 
-    const token = jwt.sign({ sub: "does-not-exist" }, env.JWT_SECRET)
+    const token = accessToken("does-not-exist")
     const response = await request(app)
       .get("/admin")
       .set("Authorization", `Bearer ${token}`)
