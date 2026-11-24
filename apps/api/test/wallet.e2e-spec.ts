@@ -1,20 +1,33 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../src/app.module.js';
+import type { INestApplication } from "@nestjs/common"
+import request from "supertest"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { createE2eApp, registerAndLogin } from "./utils/app.js"
 
-describe('Wallet Module (e2e)', () => {
-  let app: INestApplication;
+describe("Wallet (e2e)", () => {
+  let app: INestApplication
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+  beforeAll(async () => {
+    app = await createE2eApp()
+  })
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
+  afterAll(async () => {
+    await app.close()
+  })
 
-  it('should pass', () => {
-    expect(true).toBe(true);
-  });
-});
+  it("returns the primary wallet to its owner", async () => {
+    const token = await registerAndLogin(app, "e2e-wallet@example.com")
+
+    const res = await request(app.getHttpServer())
+      .get("/api/wallet/me")
+      .set("Authorization", `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.wallet).toBeDefined()
+    expect(res.body.wallet.publicKey).toEqual(expect.any(String))
+  })
+
+  it("rejects an unauthenticated wallet lookup", async () => {
+    const res = await request(app.getHttpServer()).get("/api/wallet/me")
+    expect(res.status).toBe(401)
+  })
+})

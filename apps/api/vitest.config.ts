@@ -1,10 +1,14 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { configDefaults, defineConfig } from "vitest/config"
+import swc from "unplugin-swc"
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
+  // Vitest's default esbuild transform drops decorator metadata, so Nest
+  // cannot resolve constructor-injected providers in unit tests.
+  plugins: [swc.vite({ tsconfigFile: "./tsconfig.json" })],
   resolve: {
     alias: {
       "@chordially/shared": path.resolve(dirname, "../../packages/shared/src/index.ts"),

@@ -96,6 +96,12 @@ model CreatorProfile {
   tipPayouts   TipPayout[]
   payouts      CreatorPayout[]
   bookmarkedBy Bookmark[]
+
+  // Serves the browse/filter endpoint (creator-search-index.service.ts), which
+  // filters by verification and orders by genre/location.
+  @@index([genre])
+  @@index([location])
+  @@index([isVerified])
 }
 
 model FanProfile {
@@ -280,6 +286,7 @@ model CreatorPayout {
   updatedAt           DateTime @updatedAt
 
   @@unique([creatorId, idempotencyKey])
+  @@unique([anchorTransactionId])
   @@index([creatorId])
 }
 
@@ -344,6 +351,8 @@ model Notification {
 
   @@index([recipientId])
   @@index([recipientId, read])
+  // Supports ORDER BY createdAt DESC on the recipient's inbox.
+  @@index([recipientId, createdAt])
 }
 
 // Server-side session for the access/refresh token pair issued at

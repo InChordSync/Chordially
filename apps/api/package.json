@@ -12,7 +12,8 @@
     "openapi:generate": "tsx scripts/generate-openapi.ts",
     "openapi:check": "tsx scripts/generate-openapi.ts --check",
     "test": "dotenv -e .env.test -- prisma generate && dotenv -e .env.test -- prisma db push --skip-generate --accept-data-loss && dotenv -e .env.test -- vitest run",
-    "test:e2e:testnet": "dotenv -e .env.test -- prisma generate && dotenv -e .env.test -- prisma db push --skip-generate --accept-data-loss && dotenv -e .env.test -- vitest run -c vitest.e2e.config.ts"
+    "test:e2e:testnet": "dotenv -e .env.test -- prisma generate && dotenv -e .env.test -- prisma db push --skip-generate --accept-data-loss && dotenv -e .env.test -- vitest run -c vitest.e2e.config.ts",
+    "test:e2e:api": "dotenv -e .env.test -- prisma generate && dotenv -e .env.test -- prisma db push --skip-generate --accept-data-loss && dotenv -e .env.test -- vitest run -c vitest.e2e-api.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3.1075.0",
@@ -26,6 +27,7 @@
     "@nestjs/testing": "^12.1.0",
     "@nestjs/platform-express": "^12.1.0",
     "@nestjs/swagger": "^12.0.2",
+    "@nestjs/terminus": "^12.0.0",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "^6.5.0",
     "bcryptjs": "^2.4.3",
@@ -52,6 +54,7 @@
     "supertest": "^7.0.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
+    "unplugin-swc": "^1.5.5",
     "vitest": "^3.0.9"
   },
   "jest": {
