@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from "express"
+import type { NextFunction, Request, RequestHandler, Response } from "express"
 import jwt from "jsonwebtoken"
 import { env } from "../config/env.js"
 import { prisma } from "../database/prisma.js"
@@ -68,8 +68,12 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
  * set, rejecting non-matching callers with 403. Keep the freshness trade-off
  * in mind — role is read from the DB per request, not embedded in the JWT,
  * so a role change takes effect immediately (no token reissue needed).
+ *
+ * The factory itself must stay synchronous: Express expects a middleware
+ * function, not the Promise an `async` factory would return. The returned
+ * middleware is async because the role is loaded from the database.
  */
-export function requireRole(roles: string[]) {
+export function requireRole(roles: string[]): RequestHandler {
   return async function requireRoleMiddleware(
     req: Request,
     _res: Response,
