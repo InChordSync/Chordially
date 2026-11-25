@@ -138,6 +138,14 @@ describe("requireRole middleware", () => {
     return id
   }
 
+  it("synchronously returns an async middleware function", () => {
+    const middleware = requireRole(["admin"])
+
+    // Express mounts this value directly; an async factory would return a Promise here.
+    expect(middleware).toBeTypeOf("function")
+    expect(middleware.constructor.name).toBe("AsyncFunction")
+  })
+
   it("allows a caller whose role is in the allowlist", async () => {
     const userId = await createUser("admin@test.com", "admin")
     const app = express()

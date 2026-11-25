@@ -5,6 +5,10 @@ import { reconciliationRunRateLimit } from "../middleware/reconciliation-rate-li
 
 export const reconciliationRouter: Router = Router()
 
+// Build the middleware once at registration time. `requireRole` is a synchronous
+// factory, so Express always receives the middleware function rather than a Promise.
+const requireAdmin = requireRole(["admin"])
+
 // Manual trigger, mainly for demos/ops; the scheduled loop starts with Nest.
 // calls reconciliationService.run() on the same interval automatically.
 // Operator-only (admin) by design, and rate-limited per admin so a stray
@@ -12,7 +16,7 @@ export const reconciliationRouter: Router = Router()
 reconciliationRouter.post(
   "/run",
   requireAuth,
-  requireRole(["admin"]),
+  requireAdmin,
   reconciliationRunRateLimit,
   reconciliationController.run
 )
